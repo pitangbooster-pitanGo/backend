@@ -1,0 +1,60 @@
+{
+  "kind": "collectionType",
+  "collectionName": "tasks",
+  "info": {
+    "singularName": "task",
+    "pluralName": "tasks",
+    "displayName": "Task"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "order_index": {
+      "type": "integer",
+      "required": true
+    },
+    "is_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "requires_manual_approval": {
+      "type": "boolean",
+      "required": false,
+      "default": false
+    },
+    "action_type": {
+      "type": "enumeration",
+      "enum": [
+        "reading",
+        "form",
+        "upload",
+        "external_link"
+      ]
+    },
+    "external_link": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean"
+    },
+    "track": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::track.track",
+      "inversedBy": "tasks"
+    },
+    "description": {
+      "type": "string"
+    },
+    "requires_evidence": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

@@ -1,0 +1,212 @@
+@baseUrl = http://localhost:10000/api
+
+@email = eduuardavasconcelos@gmail.com
+@password = Java@1973!
+
+@jwtAtivo = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNzc2MDM3NTQ4LCJleHAiOjE3Nzg2Mjk1NDh9.OaO9cIYZphsbxyTCC9XJRE85ycHyhaWfvTUdhw-2DHo
+@jwtInativo = COLE_AQUI_O_JWT_DO_USUARIO_INATIVO
+@jwtInvalido = invalid.token.value
+
+### Login
+POST {{baseUrl}}/auth/local
+Content-Type: application/json
+
+{
+  "identifier": "{{email}}",
+  "password": "{{password}}"
+}
+
+### /api/me - usuario ativo + token valido
+GET {{baseUrl}}/me
+Authorization: Bearer {{jwtAtivo}}
+
+### /api/me - sem token
+GET {{baseUrl}}/me
+
+### /api/me - token invalido
+GET {{baseUrl}}/me
+Authorization: Bearer {{jwtInvalido}}
+
+### /api/me - usuario inativo
+GET {{baseUrl}}/me
+Authorization: Bearer {{jwtInativo}}
+
+### Criar projeto Tramontina
+POST {{baseUrl}}/projects
+Content-Type: application/json
+Authorization: Bearer {{jwtAtivo}}
+
+{
+  "data": {
+    "name": "Projeto Tramontina",
+    "description": "Projeto de onboarding técnico e contextual para novos colaboradores alocados na frente Tramontina.",
+    "is_active": true
+  }
+}
+
+### Criar trilha institucional
+POST {{baseUrl}}/tracks
+Content-Type: application/json
+Authorization: Bearer {{jwtAtivo}}
+
+{
+  "data": {
+    "name": "Onboarding Institucional",
+    "description": "Trilha inicial com conteúdos gerais sobre a empresa, cultura, ferramentas e processos internos.",
+    "track_type": "institutional",
+    "version": 1,
+    "is_active": true,
+    "created_by_user": 1
+  }
+}
+
+### Criar trilha de projeto Tramontina
+POST {{baseUrl}}/tracks
+Content-Type: application/json
+Authorization: Bearer {{jwtAtivo}}
+
+{
+  "data": {
+    "name": "Onboarding Projeto Tramontina",
+    "description": "Trilha com atividades específicas para entendimento do contexto, arquitetura e fluxo de trabalho do projeto Tramontina.",
+    "track_type": "project",
+    "version": 1,
+    "is_active": true,
+    "created_by_user": 1,
+    "projects": [1]
+  }
+}
+
+### Criar tarefa institucional 1
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Authorization: Bearer {{jwtAtivo}}
+
+{
+  "data": {
+    "title": "Ler documentação institucional",
+    "description": "Ler o material de onboarding institucional e entender o funcionamento geral da empresa.",
+    "order_index": 1,
+    "is_required": true,
+    "requires_evidence": false,
+    "requires_manual_approval": false,
+    "action_type": "reading",
+    "is_active": true,
+    "track": 1
+  }
+}
+
+### Criar tarefa institucional 2
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Authorization: Bearer {{jwtAtivo}}
+
+{
+  "data": {
+    "title": "Configurar ferramentas de trabalho",
+    "description": "Configurar e validar acesso às ferramentas principais usadas no dia a dia.",
+    "order_index": 2,
+    "is_required": true,
+    "requires_evidence": false,
+    "requires_manual_approval": false,
+    "action_type": "form",
+    "is_active": true,
+    "track": 1
+  }
+}
+
+### Criar tarefa projeto 1
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Authorization: Bearer {{jwtAtivo}}
+
+{
+  "data": {
+    "title": "Ler documentação do projeto",
+    "description": "Ler a documentação funcional e técnica do projeto Tramontina.",
+    "order_index": 1,
+    "is_required": true,
+    "requires_evidence": false,
+    "requires_manual_approval": false,
+    "action_type": "reading",
+    "is_active": true,
+    "track": 2
+  }
+}
+
+### Criar tarefa projeto 2
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Authorization: Bearer {{jwtAtivo}}
+
+{
+  "data": {
+    "title": "Acessar ambiente de homologação",
+    "description": "Validar acesso aos ambientes e registrar evidência de que conseguiu entrar.",
+    "order_index": 2,
+    "is_required": true,
+    "requires_evidence": true,
+    "requires_manual_approval": false,
+    "action_type": "upload",
+    "is_active": true,
+    "track": 2
+  }
+}
+
+### Criar tarefa projeto 3
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Authorization: Bearer {{jwtAtivo}}
+
+{
+  "data": {
+    "title": "Abrir primeiro pull request",
+    "description": "Realizar uma pequena alteração guiada e abrir um pull request para validação do time.",
+    "order_index": 3,
+    "is_required": true,
+    "requires_evidence": true,
+    "requires_manual_approval": true,
+    "action_type": "external_link",
+    "external_link": "https://github.com/pitangbooster-pitanGo",
+    "is_active": true,
+    "track": 2
+  }
+}
+
+### Listar projetos com trilhas
+GET {{baseUrl}}/projects?populate=tracks
+Authorization: Bearer {{jwtAtivo}}
+
+### Listar trilhas com tarefas e projetos
+GET {{baseUrl}}/tracks?populate=*
+Authorization: Bearer {{jwtAtivo}}
+
+### Listar tarefas com trilha
+GET {{baseUrl}}/tasks?populate=track
+Authorization: Bearer {{jwtAtivo}}
+
+### Buscar projeto por id
+GET {{baseUrl}}/projects/1?populate=tracks
+Authorization: Bearer {{jwtAtivo}}
+
+### Buscar trilha institucional por id
+GET {{baseUrl}}/tracks/1?populate=*
+Authorization: Bearer {{jwtAtivo}}
+
+### Buscar trilha de projeto por id
+GET {{baseUrl}}/tracks/2?populate=*
+Authorization: Bearer {{jwtAtivo}}
+
+### Buscar tarefa por id
+GET {{baseUrl}}/tasks/1?populate=track
+Authorization: Bearer {{jwtAtivo}}
+
+### Exemplo futuro - role permitida
+# Use este bloco quando aplicar has-role em alguma rota administrativa.
+GET {{baseUrl}}/me
+Authorization: Bearer {{jwtAtivo}}
+
+### Exemplo futuro - role nao permitida
+# Use este bloco quando aplicar has-role em alguma rota administrativa.
+GET {{baseUrl}}/me
+Authorization: Bearer {{jwtInativo}}

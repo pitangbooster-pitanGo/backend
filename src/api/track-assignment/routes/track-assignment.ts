@@ -14,13 +14,13 @@ const managementPolicies = [
   },
 ];
 
-export default factories.createCoreRouter('api::track.track', {
+export default factories.createCoreRouter('api::track-assignment.track-assignment', {
   config: {
     find: {
-      policies: [activeUserPolicy],
+      policies: managementPolicies,
     },
     findOne: {
-      policies: [activeUserPolicy],
+      policies: managementPolicies,
     },
     create: {
       policies: managementPolicies,

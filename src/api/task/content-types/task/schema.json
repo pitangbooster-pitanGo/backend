@@ -49,6 +49,11 @@
       "target": "api::track.track",
       "inversedBy": "tasks"
     },
+    "depends_on": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::task.task"
+    },
     "description": {
       "type": "string"
     },

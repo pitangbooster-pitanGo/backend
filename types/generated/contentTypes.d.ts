@@ -515,6 +515,7 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    depends_on: Schema.Attribute.Relation<'manyToMany', 'api::task.task'>;
     description: Schema.Attribute.String;
     external_link: Schema.Attribute.String;
     is_active: Schema.Attribute.Boolean;
@@ -533,6 +534,49 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+  };
+}
+
+export interface ApiTrackAssignmentTrackAssignment
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'track_assignments';
+  info: {
+    displayName: 'Track Assignment';
+    pluralName: 'track-assignments';
+    singularName: 'track-assignment';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    assigned_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::track-assignment.track-assignment'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      ['assigned', 'in_progress', 'completed']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'assigned'>;
+    track: Schema.Attribute.Relation<'manyToOne', 'api::track.track'>;
+    track_version: Schema.Attribute.Integer & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
   };
 }
 
@@ -1087,6 +1131,7 @@ declare module '@strapi/strapi' {
       'admin::user': AdminUser;
       'api::project.project': ApiProjectProject;
       'api::task.task': ApiTaskTask;
+      'api::track-assignment.track-assignment': ApiTrackAssignmentTrackAssignment;
       'api::track.track': ApiTrackTrack;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;

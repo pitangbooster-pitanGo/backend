@@ -1,0 +1,44 @@
+{
+  "kind": "collectionType",
+  "collectionName": "track_assignments",
+  "info": {
+    "singularName": "track-assignment",
+    "pluralName": "track-assignments",
+    "displayName": "Track Assignment"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "track": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::track.track"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "assigned_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "assigned",
+        "in_progress",
+        "completed"
+      ],
+      "default": "assigned",
+      "required": true
+    },
+    "track_version": {
+      "type": "integer",
+      "required": true
+    }
+  }
+}

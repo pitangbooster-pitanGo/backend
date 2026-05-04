@@ -17,6 +17,8 @@
 @projectTrackId = 2
 @employeeUserId = 2
 @projectReadingTaskId = 3
+@trackAssignmentId = 1
+@taskExecutionId = 1
 
 ### Login
 POST {{baseUrl}}/auth/local
@@ -282,6 +284,15 @@ Authorization: Bearer {{jwtAtivo}}
 
 ### Minhas trilhas atribuidas
 GET {{baseUrl}}/my-track-assignments?populate=track
+Authorization: Bearer {{jwtEmployee}}
+
+### Listar tarefas da minha atribuicao
+GET {{baseUrl}}/my-track-assignments/{{trackAssignmentId}}/tasks
+Authorization: Bearer {{jwtEmployee}}
+
+### Concluir task execution
+POST {{baseUrl}}/task-executions/{{taskExecutionId}}/complete
+Content-Type: application/json
 Authorization: Bearer {{jwtEmployee}}
 
 ### Employee tentando criar atribuicao

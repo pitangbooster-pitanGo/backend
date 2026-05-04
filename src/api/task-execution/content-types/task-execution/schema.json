@@ -1,0 +1,65 @@
+{
+  "kind": "collectionType",
+  "collectionName": "task_executions",
+  "info": {
+    "singularName": "task-execution",
+    "pluralName": "task-executions",
+    "displayName": "Task Execution"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "track_assignment": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::track-assignment.track-assignment"
+    },
+    "task": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::task.task"
+    },
+    "execution_status": {
+      "type": "enumeration",
+      "enum": [
+        "locked",
+        "available",
+        "in_progress",
+        "submitted",
+        "approved",
+        "rejected",
+        "completed"
+      ],
+      "default": "locked",
+      "required": true
+    },
+    "released_at": {
+      "type": "datetime"
+    },
+    "completed_at": {
+      "type": "datetime"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "validated_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "validation_status": {
+      "type": "enumeration",
+      "enum": [
+        "approved",
+        "rejected",
+        "pending"
+      ],
+      "default": "pending"
+    },
+    "validated_at": {
+      "type": "datetime"
+    }
+  }
+}

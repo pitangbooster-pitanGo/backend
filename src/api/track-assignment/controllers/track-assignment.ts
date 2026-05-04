@@ -11,6 +11,13 @@ type QueryWhere = {
   documentId?: string;
 };
 
+type CreatedResponse = {
+  data?: {
+    id?: number;
+    documentId?: string;
+  };
+};
+
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -93,12 +100,36 @@ export default factories.createCoreController('api::track-assignment.track-assig
         track: track.id,
         user: assignedUser.id,
         assigned_by: authUser.id,
-        status: 'assigned',
+        status: 'not_started',
+        progress_percentage: 0,
+        started_at: null,
+        completed_at: null,
         track_version: track.version ?? 1,
       },
     };
 
-    return super.create(ctx);
+    const response = (await super.create(ctx)) as CreatedResponse;
+    const createdAssignment = await strapi
+      .db.query('api::track-assignment.track-assignment')
+      .findOne({
+        where: response?.data?.id
+          ? { id: response.data.id }
+          : response?.data?.documentId
+            ? { documentId: response.data.documentId }
+            : {},
+        populate: ['track'],
+      });
+
+    if (createdAssignment) {
+      await strapi
+        .service('api::task-execution.task-execution')
+        .createExecutionsForAssignment(createdAssignment);
+      await strapi
+        .service('api::task-execution.task-execution')
+        .syncTrackAssignmentProgress(createdAssignment.id);
+    }
+
+    return response;
   },
 
   async myAssignments(ctx) {

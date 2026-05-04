@@ -498,6 +498,64 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiTaskExecutionTaskExecution
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'task_executions';
+  info: {
+    displayName: 'Task Execution';
+    pluralName: 'task-executions';
+    singularName: 'task-execution';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    completed_at: Schema.Attribute.DateTime;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    execution_status: Schema.Attribute.Enumeration<
+      [
+        'locked',
+        'available',
+        'in_progress',
+        'submitted',
+        'approved',
+        'rejected',
+        'completed',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'locked'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::task-execution.task-execution'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    released_at: Schema.Attribute.DateTime;
+    task: Schema.Attribute.Relation<'manyToOne', 'api::task.task'>;
+    track_assignment: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::track-assignment.track-assignment'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    validated_at: Schema.Attribute.DateTime;
+    validated_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    validation_status: Schema.Attribute.Enumeration<
+      ['approved', 'rejected', 'pending']
+    > &
+      Schema.Attribute.DefaultTo<'pending'>;
+  };
+}
+
 export interface ApiTaskTask extends Struct.CollectionTypeSchema {
   collectionName: 'tasks';
   info: {
@@ -556,18 +614,22 @@ export interface ApiTrackAssignmentTrackAssignment
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    completed_at: Schema.Attribute.DateTime;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::track-assignment.track-assignment'
     > &
       Schema.Attribute.Private;
+    progress_percentage: Schema.Attribute.Decimal &
+      Schema.Attribute.DefaultTo<0>;
     publishedAt: Schema.Attribute.DateTime;
+    started_at: Schema.Attribute.DateTime;
     status: Schema.Attribute.Enumeration<
-      ['assigned', 'in_progress', 'completed']
+      ['not_started', 'in_progress', 'completed', 'cancelled']
     > &
       Schema.Attribute.Required &
-      Schema.Attribute.DefaultTo<'assigned'>;
+      Schema.Attribute.DefaultTo<'not_started'>;
     track: Schema.Attribute.Relation<'manyToOne', 'api::track.track'>;
     track_version: Schema.Attribute.Integer & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
@@ -1130,6 +1192,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
       'api::project.project': ApiProjectProject;
+      'api::task-execution.task-execution': ApiTaskExecutionTaskExecution;
       'api::task.task': ApiTaskTask;
       'api::track-assignment.track-assignment': ApiTrackAssignmentTrackAssignment;
       'api::track.track': ApiTrackTrack;

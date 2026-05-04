@@ -281,7 +281,7 @@ const createTrackAssignment = async (token, trackId, userId) => {
     fail('Criacao de track assignment nao retornou id');
   }
 
-  if (status !== 'assigned') {
+  if (status !== 'not_started') {
     fail(`Track assignment retornou status inesperado: ${status}`);
   }
 

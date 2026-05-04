@@ -29,12 +29,23 @@
     "status": {
       "type": "enumeration",
       "enum": [
-        "assigned",
+        "not_started",
         "in_progress",
-        "completed"
+        "completed",
+        "cancelled"
       ],
-      "default": "assigned",
+      "default": "not_started",
       "required": true
+    },
+    "progress_percentage": {
+      "type": "decimal",
+      "default": 0
+    },
+    "started_at": {
+      "type": "datetime"
+    },
+    "completed_at": {
+      "type": "datetime"
     },
     "track_version": {
       "type": "integer",

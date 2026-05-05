@@ -1,7 +1,7 @@
 import process from 'node:process';
 
 const config = {
-  baseUrl: process.env.STRAPI_BASE_URL ?? 'http://localhost:10000/api',
+  baseUrl: process.env.STRAPI_BASE_URL ?? 'http://localhost:1337/api',
   adminEmail: process.env.STRAPI_ADMIN_EMAIL ?? 'admin@pitango.local',
   adminPassword: process.env.STRAPI_ADMIN_PASSWORD ?? 'Admin@123',
   employeeEmail: process.env.STRAPI_EMPLOYEE_EMAIL ?? 'employee@pitango.local',
@@ -57,7 +57,17 @@ const parseJson = async (response) => {
 };
 
 const request = async (path, options = {}) => {
-  const response = await fetch(`${config.baseUrl}${path}`, options);
+  const url = `${config.baseUrl}${path}`;
+  let response;
+
+  try {
+    response = await fetch(url, options);
+  } catch (error) {
+    const cause = error instanceof Error && error.cause ? `\n${String(error.cause)}` : '';
+
+    fail(`Falha ao chamar ${url}${cause}`);
+  }
+
   const body = await parseJson(response);
 
   return {

@@ -2,7 +2,10 @@ import { factories } from '@strapi/strapi';
 
 type TaskEntity = {
   id: number;
+  documentId?: string | null;
   order_index: number;
+  publishedAt?: string | null;
+  requires_manual_approval?: boolean | null;
   depends_on?: Array<{ id: number }> | null;
 };
 
@@ -35,8 +38,23 @@ const getTaskExecutionState = (task: TaskEntity) => {
   };
 };
 
-const getTasksForTrack = async (trackId: number) =>
-  (await strapi.db.query('api::task.task').findMany({
+const deduplicateTasks = (tasks: TaskEntity[]) => {
+  const taskByDocument = new Map<string | number, TaskEntity>();
+
+  for (const task of tasks) {
+    const key = task.documentId ?? task.id;
+    const currentTask = taskByDocument.get(key);
+
+    if (!currentTask || (!currentTask.publishedAt && task.publishedAt)) {
+      taskByDocument.set(key, task);
+    }
+  }
+
+  return [...taskByDocument.values()].sort((left, right) => left.order_index - right.order_index);
+};
+
+const getTasksForTrack = async (trackId: number) => {
+  const tasks = (await strapi.db.query('api::task.task').findMany({
     where: {
       track: {
         id: trackId,
@@ -50,6 +68,9 @@ const getTasksForTrack = async (trackId: number) =>
       order_index: 'asc',
     },
   })) as TaskEntity[];
+
+  return deduplicateTasks(tasks);
+};
 
 const updateTrackAssignmentProgress = async (trackAssignmentId: number) => {
   const currentAssignment = (await strapi
@@ -72,16 +93,22 @@ const updateTrackAssignmentProgress = async (trackAssignmentId: number) => {
   const completed = executions.filter(
     (execution) => execution.execution_status === 'completed'
   ).length;
+  const started = executions.some(
+    (execution) =>
+      execution.execution_status &&
+      !['locked', 'available'].includes(execution.execution_status)
+  );
   const progress = total === 0 ? 0 : Number(((completed / total) * 100).toFixed(2));
   const isCompleted = total > 0 && completed === total;
 
   await strapi.db.query('api::track-assignment.track-assignment').update({
     where: { id: trackAssignmentId },
     data: {
-      status: isCompleted ? 'completed' : completed > 0 ? 'in_progress' : 'not_started',
+      status: isCompleted ? 'completed' : started ? 'in_progress' : 'not_started',
       completed_at: isCompleted ? nowIso() : null,
-      started_at:
-        completed > 0 ? currentAssignment?.started_at ?? nowIso() : currentAssignment?.started_at ?? null,
+      started_at: started
+        ? currentAssignment?.started_at ?? nowIso()
+        : currentAssignment?.started_at ?? null,
       progress_percentage: progress,
     },
   });
@@ -190,6 +217,7 @@ export default factories.createCoreService('api::task-execution.task-execution',
             id: number;
             user?: { id: number } | null;
           } | null;
+          task?: TaskEntity | null;
         }
       | null;
 
@@ -205,10 +233,27 @@ export default factories.createCoreService('api::task-execution.task-execution',
       throw new Error('Task execution is not available for completion');
     }
 
+    if (execution.task?.requires_manual_approval) {
+      await strapi.db.query('api::task-execution.task-execution').update({
+        where: { id: execution.id },
+        data: {
+          execution_status: 'submitted',
+          validation_status: 'pending',
+          completed_at: null,
+          validated_at: null,
+          validated_by: null,
+        },
+      });
+
+      await updateTrackAssignmentProgress(execution.track_assignment.id);
+      return;
+    }
+
     await strapi.db.query('api::task-execution.task-execution').update({
       where: { id: execution.id },
       data: {
         execution_status: 'completed',
+        validation_status: 'approved',
         completed_at: nowIso(),
       },
     });

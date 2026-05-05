@@ -9,6 +9,7 @@
     "deploy": "strapi deploy",
     "dev": "strapi develop",
     "develop": "strapi develop",
+    "validate:e2e": "node scripts/validate-e2e.mjs",
     "validate:encontro7": "node scripts/validate-encontro-7.mjs",
     "validate:encontro6": "node scripts/validate-encontro-6.mjs",
     "start": "strapi start",

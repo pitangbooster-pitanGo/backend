@@ -1,7 +1,7 @@
 import process from 'node:process';
 
 const config = {
-  baseUrl: process.env.STRAPI_BASE_URL ?? 'http://localhost:10000/api',
+  baseUrl: process.env.STRAPI_BASE_URL ?? 'http://localhost:1337/api',
   adminEmail: process.env.STRAPI_ADMIN_EMAIL ?? 'admin@pitango.local',
   adminPassword: process.env.STRAPI_ADMIN_PASSWORD ?? 'Admin@123',
   employeeEmail: process.env.STRAPI_EMPLOYEE_EMAIL ?? 'employee@pitango.local',
@@ -15,6 +15,7 @@ const names = {
   track: `Trilha E7 ${timestamp}`,
   task1: `Tarefa 1 E7 ${timestamp}`,
   task2: `Tarefa 2 E7 ${timestamp}`,
+  task3: `Tarefa 3 E7 aprovacao manual ${timestamp}`,
 };
 
 const summary = {
@@ -27,6 +28,7 @@ const summary = {
   taskExecutionIds: [],
   progressAfterFirstCompletion: null,
   progressAfterSecondCompletion: null,
+  progressAfterManualSubmission: null,
 };
 
 const print = (message) => {
@@ -53,7 +55,17 @@ const parseJson = async (response) => {
 };
 
 const request = async (path, options = {}) => {
-  const response = await fetch(`${config.baseUrl}${path}`, options);
+  const url = `${config.baseUrl}${path}`;
+  let response;
+
+  try {
+    response = await fetch(url, options);
+  } catch (error) {
+    const cause = error instanceof Error && error.cause ? `\n${String(error.cause)}` : '';
+
+    fail(`Falha ao chamar ${url}${cause}`);
+  }
+
   const body = await parseJson(response);
 
   return {
@@ -265,16 +277,58 @@ const completeExecution = async (token, executionId) => {
   return body;
 };
 
+const expectCompleteBlockedExecutionToFail = async (token, executionId) => {
+  const result = await request(`/task-executions/${executionId}/complete`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+
+  const body = result.body;
+
+  if (result.response.status !== 400) {
+    fail(
+      `Conclusao de task execution bloqueada deveria falhar com 400, retornou ${result.response.status}\n${JSON.stringify(body, null, 2)}`
+    );
+  }
+
+  const message = body?.error?.message ?? '';
+
+  if (!String(message).includes('Tarefa ainda nao pode ser concluida')) {
+    fail(`Mensagem inesperada ao concluir tarefa bloqueada\n${JSON.stringify(body, null, 2)}`);
+  }
+
+  return body;
+};
+
+const submitExecutionForApproval = async (token, executionId) => {
+  const result = await request(`/task-executions/${executionId}/complete`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+
+  const body = expectSuccess(result, 'Submissao de task execution para aprovacao');
+
+  if (body?.data?.execution_status !== 'submitted') {
+    fail(`Task execution manual nao retornou submitted\n${JSON.stringify(body, null, 2)}`);
+  }
+
+  if (body?.data?.validation_status !== 'pending') {
+    fail(`Task execution manual nao ficou pending\n${JSON.stringify(body, null, 2)}`);
+  }
+
+  return body;
+};
+
 const assertInitialExecutions = (items) => {
-  if (items.length !== 2) {
-    fail(`Esperava 2 task executions, recebi ${items.length}`);
+  if (items.length !== 3) {
+    fail(`Esperava 3 task executions, recebi ${items.length}`);
   }
 
   const ordered = [...items].sort(
     (left, right) => (left.task?.order_index ?? 0) - (right.task?.order_index ?? 0)
   );
 
-  const [first, second] = ordered;
+  const [first, second, third] = ordered;
 
   if (first.execution_status !== 'available') {
     fail(`Primeira task execution deveria iniciar como available, veio ${first.execution_status}`);
@@ -284,9 +338,13 @@ const assertInitialExecutions = (items) => {
     fail(`Segunda task execution deveria iniciar como locked, veio ${second.execution_status}`);
   }
 
+  if (third.execution_status !== 'locked') {
+    fail(`Terceira task execution deveria iniciar como locked, veio ${third.execution_status}`);
+  }
+
   summary.taskExecutionIds = ordered.map((item) => item.id);
 
-  return { first, second };
+  return { first, second, third };
 };
 
 const assertAssignmentProgress = (items, expectedAssignmentId, expectedStatus, expectedProgress) => {
@@ -358,7 +416,24 @@ const run = async () => {
     'Criacao da tarefa 2'
   );
 
-  summary.taskIds = [task1, task2];
+  const task3 = await createTask(
+    adminLogin.jwt,
+    {
+      title: names.task3,
+      description: 'Terceira tarefa exige aprovacao manual antes de contar progresso.',
+      order_index: 3,
+      is_required: true,
+      requires_evidence: true,
+      requires_manual_approval: true,
+      action_type: 'upload',
+      is_active: true,
+      track: trackId,
+      depends_on: [task2],
+    },
+    'Criacao da tarefa 3 com aprovacao manual'
+  );
+
+  summary.taskIds = [task1, task2, task3];
   print(`Tarefas criadas: ${summary.taskIds.join(', ')}`);
 
   const assignmentId = await createTrackAssignment(adminLogin.jwt, trackId, employee.id);
@@ -366,8 +441,11 @@ const run = async () => {
 
   const employeeLogin = await login(config.employeeEmail, config.employeePassword, 'employee');
   const initialExecutions = await listAssignmentTasks(employeeLogin.jwt, assignmentId);
-  const { first, second } = assertInitialExecutions(initialExecutions);
+  const { first, second, third } = assertInitialExecutions(initialExecutions);
   print('Task executions iniciais validados');
+
+  await expectCompleteBlockedExecutionToFail(employeeLogin.jwt, second.id);
+  print('Bloqueio de task execution dependente validado');
 
   await completeExecution(employeeLogin.jwt, first.id);
   print(`Primeira task execution concluida: ${first.id}`);
@@ -377,7 +455,7 @@ const run = async () => {
     assignmentsAfterFirst,
     assignmentId,
     'in_progress',
-    50
+    33.33
   );
   summary.progressAfterFirstCompletion = Number(assignmentAfterFirst.progress_percentage ?? 0);
 
@@ -403,10 +481,37 @@ const run = async () => {
   const assignmentAfterSecond = assertAssignmentProgress(
     assignmentsAfterSecond,
     assignmentId,
-    'completed',
-    100
+    'in_progress',
+    66.67
   );
   summary.progressAfterSecondCompletion = Number(assignmentAfterSecond.progress_percentage ?? 0);
+
+  const afterSecondExecutions = await listAssignmentTasks(employeeLogin.jwt, assignmentId);
+  const manualExecution = afterSecondExecutions.find((item) => item.id === third.id);
+
+  if (!manualExecution) {
+    fail('Terceira task execution manual nao foi encontrada apos a segunda conclusao');
+  }
+
+  if (manualExecution.execution_status !== 'available') {
+    fail(
+      `Terceira task execution deveria ser liberada como available, veio ${manualExecution.execution_status}`
+    );
+  }
+
+  await submitExecutionForApproval(employeeLogin.jwt, manualExecution.id);
+  print(`Terceira task execution enviada para aprovacao: ${manualExecution.id}`);
+
+  const assignmentsAfterManualSubmission = await getMyAssignments(employeeLogin.jwt);
+  const assignmentAfterManualSubmission = assertAssignmentProgress(
+    assignmentsAfterManualSubmission,
+    assignmentId,
+    'in_progress',
+    66.67
+  );
+  summary.progressAfterManualSubmission = Number(
+    assignmentAfterManualSubmission.progress_percentage ?? 0
+  );
 
   print('Encontro 7 validado com sucesso');
   print(JSON.stringify(summary, null, 2));

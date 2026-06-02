@@ -1,9 +1,9 @@
-@baseUrl = http://localhost:10000/api
+@baseUrl = http://localhost:1337/api
 
 @email = eduuardavasconcelos@gmail.com
 @password = Java@1973!
 
-@jwtAtivo = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNzc3MjQ0MjM5LCJleHAiOjE3Nzk4MzYyMzl9.oWcFdggiFa_U53bvJnlEWYezhpbg7eJMuAWQsGsoB2Q
+@jwtAtivo = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNzc4MDAzNTAzLCJleHAiOjE3ODA1OTU1MDN9.okxqJdIy65XYmXsRwqu1v_UDlER5K5QGQWW-jN-b5Vs
 @jwtEmployee = COLE_AQUI_O_JWT_DO_EMPLOYEE
 @jwtInvalido = invalid.token.value
 

@@ -1,24 +1,12 @@
 import { factories } from '@strapi/strapi';
+import { errors } from '@strapi/utils';
 
-type TaskEntity = {
-  id: number;
-  documentId?: string | null;
-  order_index: number;
-  publishedAt?: string | null;
-  requires_manual_approval?: boolean | null;
-  depends_on?: Array<{ id: number }> | null;
-};
+import { releaseDependentExecutions } from './dependency-release';
+import { syncTrackAssignmentProgress as syncProgress } from './progress';
+import { getTasksForTrack } from './task-selection';
+import type { TaskEntity, TaskExecutionEntity, TrackAssignmentEntity } from './types';
 
-type TrackAssignmentEntity = {
-  id: number;
-  status?: string | null;
-  progress_percentage?: number | string | null;
-  started_at?: string | null;
-  completed_at?: string | null;
-  track?: {
-    id: number;
-  } | null;
-};
+const { ApplicationError, ForbiddenError, NotFoundError, ValidationError } = errors;
 
 const nowIso = () => new Date().toISOString();
 
@@ -38,138 +26,12 @@ const getTaskExecutionState = (task: TaskEntity) => {
   };
 };
 
-const deduplicateTasks = (tasks: TaskEntity[]) => {
-  const taskByDocument = new Map<string | number, TaskEntity>();
-
-  for (const task of tasks) {
-    const key = task.documentId ?? task.id;
-    const currentTask = taskByDocument.get(key);
-
-    if (!currentTask || (!currentTask.publishedAt && task.publishedAt)) {
-      taskByDocument.set(key, task);
-    }
-  }
-
-  return [...taskByDocument.values()].sort((left, right) => left.order_index - right.order_index);
-};
-
-const getTasksForTrack = async (trackId: number) => {
-  const tasks = (await strapi.db.query('api::task.task').findMany({
-    where: {
-      track: {
-        id: trackId,
-      },
-      is_active: {
-        $ne: false,
-      },
-    },
-    populate: ['depends_on'],
-    orderBy: {
-      order_index: 'asc',
-    },
-  })) as TaskEntity[];
-
-  return deduplicateTasks(tasks);
-};
-
-const updateTrackAssignmentProgress = async (trackAssignmentId: number) => {
-  const currentAssignment = (await strapi
-    .db.query('api::track-assignment.track-assignment')
-    .findOne({
-      where: { id: trackAssignmentId },
-    })) as TrackAssignmentEntity | null;
-  const executions = (await strapi.db.query('api::task-execution.task-execution').findMany({
-    where: {
-      track_assignment: {
-        id: trackAssignmentId,
-      },
-    },
-  })) as Array<{
-    id: number;
-    execution_status?: string | null;
-  }>;
-
-  const total = executions.length;
-  const completed = executions.filter(
-    (execution) => execution.execution_status === 'completed'
-  ).length;
-  const started = executions.some(
-    (execution) =>
-      execution.execution_status &&
-      !['locked', 'available'].includes(execution.execution_status)
-  );
-  const progress = total === 0 ? 0 : Number(((completed / total) * 100).toFixed(2));
-  const isCompleted = total > 0 && completed === total;
-
-  await strapi.db.query('api::track-assignment.track-assignment').update({
-    where: { id: trackAssignmentId },
-    data: {
-      status: isCompleted ? 'completed' : started ? 'in_progress' : 'not_started',
-      completed_at: isCompleted ? nowIso() : null,
-      started_at: started
-        ? currentAssignment?.started_at ?? nowIso()
-        : currentAssignment?.started_at ?? null,
-      progress_percentage: progress,
-    },
-  });
-};
-
-const releaseDependentExecutions = async (trackAssignmentId: number) => {
-  const executions = (await strapi.db.query('api::task-execution.task-execution').findMany({
-    where: {
-      track_assignment: {
-        id: trackAssignmentId,
-      },
-    },
-    populate: {
-      task: {
-        populate: ['depends_on'],
-      },
-    },
-  })) as Array<{
-    id: number;
-    execution_status?: string | null;
-    task?: TaskEntity | null;
-  }>;
-
-  const executionByTaskId = new Map<number, (typeof executions)[number]>();
-
-  for (const execution of executions) {
-    if (execution.task?.id) {
-      executionByTaskId.set(execution.task.id, execution);
-    }
-  }
-
-  for (const execution of executions) {
-    if (execution.execution_status !== 'locked' || !execution.task) {
-      continue;
-    }
-
-    const dependencies = execution.task.depends_on ?? [];
-    const canRelease =
-      dependencies.length > 0 &&
-      dependencies.every((dependency) => {
-        const dependencyExecution = executionByTaskId.get(dependency.id);
-        return dependencyExecution?.execution_status === 'completed';
-      });
-
-    if (!canRelease) {
-      continue;
-    }
-
-    await strapi.db.query('api::task-execution.task-execution').update({
-      where: { id: execution.id },
-      data: {
-        execution_status: 'available',
-        released_at: nowIso(),
-      },
-    });
-  }
-};
-
 export default factories.createCoreService('api::task-execution.task-execution', () => ({
   async createExecutionsForAssignment(trackAssignment: TrackAssignmentEntity) {
     if (!trackAssignment.track?.id) {
+      strapi.log.warn('[TaskExecutionService.createExecutionsForAssignment] Track ausente', {
+        trackAssignmentId: trackAssignment.id,
+      });
       return [];
     }
 
@@ -211,26 +73,41 @@ export default factories.createCoreService('api::task-execution.task-execution',
       },
     })) as
       | {
-          id: number;
-          execution_status?: string | null;
-          track_assignment?: {
-            id: number;
-            user?: { id: number } | null;
-          } | null;
-          task?: TaskEntity | null;
+          id: TaskExecutionEntity['id'];
+          execution_status?: TaskExecutionEntity['execution_status'];
+          track_assignment?: TaskExecutionEntity['track_assignment'];
+          task?: TaskExecutionEntity['task'];
         }
       | null;
 
     if (!execution) {
-      throw new Error('Task execution not found');
+      throw new NotFoundError('Execucao da tarefa nao encontrada', {
+        code: 'TASK_EXECUTION_NOT_FOUND',
+        executionId,
+      });
     }
 
     if (execution.track_assignment?.user?.id !== userId) {
-      throw new Error('User cannot complete this task execution');
+      throw new ForbiddenError('Usuario sem acesso a esta tarefa', {
+        code: 'TASK_EXECUTION_FORBIDDEN',
+        executionId,
+        userId,
+      });
     }
 
     if (!['available', 'in_progress'].includes(execution.execution_status ?? '')) {
-      throw new Error('Task execution is not available for completion');
+      throw new ValidationError('Tarefa ainda nao pode ser concluida', {
+        code: 'TASK_EXECUTION_NOT_AVAILABLE',
+        executionId,
+        status: execution.execution_status,
+      });
+    }
+
+    if (!execution.track_assignment?.id) {
+      throw new ApplicationError('Execucao sem atribuicao de trilha vinculada', {
+        code: 'TASK_EXECUTION_ASSIGNMENT_MISSING',
+        executionId,
+      });
     }
 
     if (execution.task?.requires_manual_approval) {
@@ -245,7 +122,7 @@ export default factories.createCoreService('api::task-execution.task-execution',
         },
       });
 
-      await updateTrackAssignmentProgress(execution.track_assignment.id);
+      await syncProgress(execution.track_assignment.id);
       return;
     }
 
@@ -259,11 +136,11 @@ export default factories.createCoreService('api::task-execution.task-execution',
     });
 
     await releaseDependentExecutions(execution.track_assignment.id);
-    await updateTrackAssignmentProgress(execution.track_assignment.id);
+    await syncProgress(execution.track_assignment.id);
   },
 
   async syncTrackAssignmentProgress(trackAssignmentId: number) {
-    await updateTrackAssignmentProgress(trackAssignmentId);
+    await syncProgress(trackAssignmentId);
   },
 
   async listExecutionsForAssignment(trackAssignmentId: number) {

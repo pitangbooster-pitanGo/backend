@@ -4,6 +4,7 @@ export type TaskEntity = {
   order_index: number;
   publishedAt?: string | null;
   requires_manual_approval?: boolean | null;
+  requires_evidence?: boolean | null;
   depends_on?: Array<{ id: number }> | null;
 };
 
@@ -26,4 +27,5 @@ export type TaskExecutionEntity = {
     user?: { id: number } | null;
   } | null;
   task?: TaskEntity | null;
+  evidences?: Array<{ id: number }> | null;
 };

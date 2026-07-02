@@ -461,6 +461,45 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiTaskEvidenceTaskEvidence
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'task_evidences';
+  info: {
+    displayName: 'Task Evidence';
+    pluralName: 'task-evidences';
+    singularName: 'task-evidence';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    file: Schema.Attribute.Media<'images' | 'files' | 'videos'> &
+      Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::task-evidence.task-evidence'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    submitted_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    task_execution: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::task-execution.task-execution'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiTaskExecutionTaskExecution
   extends Struct.CollectionTypeSchema {
   collectionName: 'task_executions';
@@ -477,6 +516,10 @@ export interface ApiTaskExecutionTaskExecution
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    evidences: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::task-evidence.task-evidence'
+    >;
     execution_status: Schema.Attribute.Enumeration<
       [
         'locked',
@@ -1154,6 +1197,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
       'api::project.project': ApiProjectProject;
+      'api::task-evidence.task-evidence': ApiTaskEvidenceTaskEvidence;
       'api::task-execution.task-execution': ApiTaskExecutionTaskExecution;
       'api::task.task': ApiTaskTask;
       'api::track-assignment.track-assignment': ApiTrackAssignmentTrackAssignment;

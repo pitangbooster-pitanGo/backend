@@ -1,11 +1,34 @@
 import { factories } from '@strapi/strapi';
+import { errors } from '@strapi/utils';
+import type { UID } from '@strapi/types';
 
 import { logControllerError, rethrowStrapiError } from '../../../utils/controller-error';
+
+const { ValidationError } = errors;
+const taskEvidenceUid = 'api::task-evidence.task-evidence' as UID.ContentType;
 
 const parseId = (value: string) => {
   const parsedId = Number(value);
 
   return Number.isInteger(parsedId) && parsedId > 0 ? parsedId : null;
+};
+
+const parseBodyData = (data: unknown) => {
+  if (!data) {
+    return {};
+  }
+
+  if (typeof data === 'string') {
+    try {
+      return JSON.parse(data) as Record<string, unknown>;
+    } catch {
+      throw new ValidationError('Payload de evidencia invalido', {
+        code: 'TASK_EVIDENCE_PAYLOAD_INVALID',
+      });
+    }
+  }
+
+  return typeof data === 'object' && !Array.isArray(data) ? (data as Record<string, unknown>) : {};
 };
 
 export default factories.createCoreController('api::task-execution.task-execution', () => ({
@@ -114,6 +137,9 @@ export default factories.createCoreController('api::task-execution.task-executio
           },
           track_assignment: true,
           validated_by: true,
+          evidences: {
+            populate: ['file', 'submitted_by'],
+          },
         },
       });
       const sanitizedExecution = await this.sanitizeOutput(execution, ctx);
@@ -127,6 +153,60 @@ export default factories.createCoreController('api::task-execution.task-executio
       });
       return ctx.internalServerError('Tarefa concluida, mas houve falha ao carregar a resposta', {
         code: 'TASK_EXECUTION_RESPONSE_LOAD_FAILED',
+        executionId,
+      });
+    }
+  },
+
+  async attachEvidence(ctx) {
+    const authUser = ctx.state.user;
+    const executionId = parseId(ctx.params.id);
+
+    if (!authUser) {
+      return ctx.unauthorized('Autenticacao obrigatoria', {
+        code: 'AUTH_REQUIRED',
+      });
+    }
+
+    if (executionId === null) {
+      return ctx.badRequest('Identificador da execucao invalido', {
+        code: 'TASK_EXECUTION_ID_INVALID',
+        id: ctx.params.id,
+      });
+    }
+
+    await this.validateQuery(ctx);
+    await this.sanitizeQuery(ctx);
+
+    try {
+      const bodyData = parseBodyData(ctx.request.body?.data ?? ctx.request.body);
+      const evidences = await strapi
+        .service('api::task-execution.task-execution')
+        .attachEvidenceToExecution({
+          executionId,
+          userId: authUser.id,
+          files: ctx.request.files?.files ?? ctx.request.files?.file,
+          notes: typeof bodyData.notes === 'string' ? bodyData.notes : null,
+        });
+      const evidenceContentType = strapi.contentType(taskEvidenceUid);
+      const sanitizedEvidences = await strapi.contentAPI.sanitize.output(
+        evidences,
+        evidenceContentType,
+        {
+          auth: ctx.state.auth,
+        }
+      );
+
+      ctx.status = 201;
+      return { data: sanitizedEvidences };
+    } catch (error) {
+      rethrowStrapiError(error);
+      logControllerError('task-execution.attachEvidence', error, {
+        executionId,
+        userId: authUser.id,
+      });
+      return ctx.internalServerError('Falha ao anexar evidencia', {
+        code: 'TASK_EVIDENCE_ATTACH_FAILED',
         executionId,
       });
     }

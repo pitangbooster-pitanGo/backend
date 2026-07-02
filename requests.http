@@ -19,6 +19,9 @@
 @projectReadingTaskId = 3
 @trackAssignmentId = 1
 @taskExecutionId = 1
+@evidenceTaskId = 4
+@evidenceTaskExecutionId = 1
+@evidenceFilePath = /tmp/pitango-evidence.txt
 
 ### Login
 POST {{baseUrl}}/auth/local
@@ -293,6 +296,55 @@ Authorization: Bearer {{jwtEmployee}}
 ### Concluir task execution
 POST {{baseUrl}}/task-executions/{{taskExecutionId}}/complete
 Content-Type: application/json
+Authorization: Bearer {{jwtEmployee}}
+
+### Criar tarefa que exige evidencia
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Authorization: Bearer {{jwtAtivo}}
+
+{
+  "data": {
+    "title": "Enviar comprovante de configuracao",
+    "description": "Enviar arquivo comprovando a configuracao dos acessos.",
+    "order_index": 3,
+    "is_required": true,
+    "requires_evidence": true,
+    "requires_manual_approval": false,
+    "action_type": "upload",
+    "is_active": true,
+    "track": {{institutionalTrackId}}
+  }
+}
+
+### Concluir task execution sem evidencia - deve falhar com TASK_EVIDENCE_REQUIRED
+POST {{baseUrl}}/task-executions/{{evidenceTaskExecutionId}}/complete
+Content-Type: application/json
+Authorization: Bearer {{jwtEmployee}}
+
+### Anexar evidencia na task execution
+POST {{baseUrl}}/task-executions/{{evidenceTaskExecutionId}}/evidences
+Authorization: Bearer {{jwtEmployee}}
+Content-Type: multipart/form-data; boundary=EvidenceBoundary
+
+--EvidenceBoundary
+Content-Disposition: form-data; name="notes"
+
+Comprovante enviado pelo requests.http
+--EvidenceBoundary
+Content-Disposition: form-data; name="files"; filename="pitango-evidence.txt"
+Content-Type: text/plain
+
+< {{evidenceFilePath}}
+--EvidenceBoundary--
+
+### Concluir task execution com evidencia anexada
+POST {{baseUrl}}/task-executions/{{evidenceTaskExecutionId}}/complete
+Content-Type: application/json
+Authorization: Bearer {{jwtEmployee}}
+
+### Listar evidencias
+GET {{baseUrl}}/task-evidences?populate=*
 Authorization: Bearer {{jwtEmployee}}
 
 ### Employee tentando criar atribuicao

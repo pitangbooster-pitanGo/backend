@@ -20,5 +20,14 @@ export default {
         policies: [activeUserPolicy],
       },
     },
+    {
+      method: 'POST',
+      path: '/task-executions/:id/evidences',
+      handler: 'task-execution.attachEvidence',
+      config: {
+        auth: {},
+        policies: [activeUserPolicy],
+      },
+    },
   ],
 };

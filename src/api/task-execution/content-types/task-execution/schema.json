@@ -60,6 +60,12 @@
     },
     "validated_at": {
       "type": "datetime"
+    },
+    "evidences": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::task-evidence.task-evidence",
+      "mappedBy": "task_execution"
     }
   }
 }

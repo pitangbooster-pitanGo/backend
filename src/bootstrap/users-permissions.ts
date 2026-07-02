@@ -46,6 +46,9 @@ const managementActions = [
   'api::task-execution.task-execution.delete',
   'api::task-execution.task-execution.listForMyAssignment',
   'api::task-execution.task-execution.complete',
+  'api::task-execution.task-execution.attachEvidence',
+  'api::task-evidence.task-evidence.find',
+  'api::task-evidence.task-evidence.findOne',
   'plugin::users-permissions.role.find',
   'plugin::users-permissions.role.findOne',
   'plugin::users-permissions.user.find',
@@ -65,6 +68,9 @@ const employeeActions = [
   'api::track-assignment.track-assignment.myAssignments',
   'api::task-execution.task-execution.listForMyAssignment',
   'api::task-execution.task-execution.complete',
+  'api::task-execution.task-execution.attachEvidence',
+  'api::task-evidence.task-evidence.find',
+  'api::task-evidence.task-evidence.findOne',
 ];
 
 const roleSeeds: RoleSeed[] = [

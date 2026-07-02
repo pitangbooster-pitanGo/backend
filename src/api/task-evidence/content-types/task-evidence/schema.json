@@ -1,0 +1,39 @@
+{
+  "kind": "collectionType",
+  "collectionName": "task_evidences",
+  "info": {
+    "singularName": "task-evidence",
+    "pluralName": "task-evidences",
+    "displayName": "Task Evidence"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "task_execution": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::task-execution.task-execution",
+      "inversedBy": "evidences"
+    },
+    "file": {
+      "type": "media",
+      "multiple": false,
+      "required": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos"
+      ]
+    },
+    "submitted_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "notes": {
+      "type": "text"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "kind": "collectionType",
+  "collectionName": "track_versions",
+  "info": {
+    "singularName": "track-version",
+    "pluralName": "track-versions",
+    "displayName": "Track Version"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    }
+  },
+  "attributes": {
+    "track": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::track.track",
+      "inversedBy": "versions",
+      "required": true
+    },
+    "version": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "content": {
+      "type": "json",
+      "required": true
+    },
+    "created_by_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

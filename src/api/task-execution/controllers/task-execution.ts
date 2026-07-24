@@ -132,9 +132,6 @@ export default factories.createCoreController('api::task-execution.task-executio
       const execution = await strapi.db.query('api::task-execution.task-execution').findOne({
         where: { id: executionId },
         populate: {
-          task: {
-            populate: ['depends_on'],
-          },
           track_assignment: true,
           validated_by: true,
           evidences: {

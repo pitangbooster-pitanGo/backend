@@ -543,6 +543,9 @@ export interface ApiTaskExecutionTaskExecution
     publishedAt: Schema.Attribute.DateTime;
     released_at: Schema.Attribute.DateTime;
     task: Schema.Attribute.Relation<'manyToOne', 'api::task.task'>;
+    task_snapshot: Schema.Attribute.JSON & Schema.Attribute.Required;
+    task_source_document_id: Schema.Attribute.String &
+      Schema.Attribute.Required;
     track_assignment: Schema.Attribute.Relation<
       'manyToOne',
       'api::track-assignment.track-assignment'
@@ -570,7 +573,7 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
     singularName: 'task';
   };
   options: {
-    draftAndPublish: true;
+    draftAndPublish: false;
   };
   attributes: {
     action_type: Schema.Attribute.Enumeration<
@@ -637,6 +640,9 @@ export interface ApiTrackAssignmentTrackAssignment
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'not_started'>;
     track: Schema.Attribute.Relation<'manyToOne', 'api::track.track'>;
+    track_description: Schema.Attribute.Text;
+    track_name: Schema.Attribute.String & Schema.Attribute.Required;
+    track_snapshot: Schema.Attribute.JSON & Schema.Attribute.Required;
     track_version: Schema.Attribute.Integer & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -648,6 +654,57 @@ export interface ApiTrackAssignmentTrackAssignment
   };
 }
 
+export interface ApiTrackVersionTrackVersion
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'track_versions';
+  info: {
+    displayName: 'Track Version';
+    pluralName: 'track-versions';
+    singularName: 'track-version';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    content: Schema.Attribute.JSON & Schema.Attribute.Required;
+    created_by_user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::track-version.track-version'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    track: Schema.Attribute.Relation<'manyToOne', 'api::track.track'> &
+      Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    version: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
+  };
+}
+
 export interface ApiTrackTrack extends Struct.CollectionTypeSchema {
   collectionName: 'tracks';
   info: {
@@ -656,7 +713,7 @@ export interface ApiTrackTrack extends Struct.CollectionTypeSchema {
     singularName: 'track';
   };
   options: {
-    draftAndPublish: true;
+    draftAndPublish: false;
   };
   attributes: {
     created_by_user: Schema.Attribute.Relation<
@@ -679,7 +736,19 @@ export interface ApiTrackTrack extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    version: Schema.Attribute.Integer;
+    version: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>;
+    versions: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::track-version.track-version'
+    >;
   };
 }
 
@@ -1201,6 +1270,7 @@ declare module '@strapi/strapi' {
       'api::task-execution.task-execution': ApiTaskExecutionTaskExecution;
       'api::task.task': ApiTaskTask;
       'api::track-assignment.track-assignment': ApiTrackAssignmentTrackAssignment;
+      'api::track-version.track-version': ApiTrackVersionTrackVersion;
       'api::track.track': ApiTrackTrack;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;

@@ -21,6 +21,14 @@
       "relation": "manyToOne",
       "target": "api::task.task"
     },
+    "task_source_document_id": {
+      "type": "string",
+      "required": true
+    },
+    "task_snapshot": {
+      "type": "json",
+      "required": true
+    },
     "execution_status": {
       "type": "enumeration",
       "enum": [

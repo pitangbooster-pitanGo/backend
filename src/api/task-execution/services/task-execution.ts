@@ -3,8 +3,8 @@ import { errors } from '@strapi/utils';
 
 import { releaseDependentExecutions } from './dependency-release';
 import { syncTrackAssignmentProgress as syncProgress } from './progress';
-import { getTasksForTrack } from './task-selection';
-import type { TaskEntity, TaskExecutionEntity, TrackAssignmentEntity } from './types';
+import type { TaskExecutionEntity, TrackAssignmentEntity } from './types';
+import type { TaskSnapshot } from '../../track/services/track-versioning';
 
 const { ApplicationError, ForbiddenError, NotFoundError, ValidationError } = errors;
 
@@ -29,8 +29,8 @@ const normalizeFiles = (files: unknown) => {
   return Array.isArray(files) ? files : [files];
 };
 
-const getTaskExecutionState = (task: TaskEntity) => {
-  const hasDependencies = Array.isArray(task.depends_on) && task.depends_on.length > 0;
+const getTaskExecutionState = (task: TaskSnapshot) => {
+  const hasDependencies = task.dependsOn.length > 0;
 
   if (hasDependencies) {
     return {
@@ -47,22 +47,27 @@ const getTaskExecutionState = (task: TaskEntity) => {
 
 export default factories.createCoreService('api::task-execution.task-execution', () => ({
   async createExecutionsForAssignment(trackAssignment: TrackAssignmentEntity) {
-    if (!trackAssignment.track?.id) {
-      strapi.log.warn('[TaskExecutionService.createExecutionsForAssignment] Track ausente', {
+    if (!trackAssignment.track_snapshot) {
+      strapi.log.warn('[TaskExecutionService.createExecutionsForAssignment] Snapshot ausente', {
         trackAssignmentId: trackAssignment.id,
       });
       return [];
     }
 
-    const tasks = await getTasksForTrack(trackAssignment.track.id);
+    const tasks = trackAssignment.track_snapshot.tasks;
     const createdExecutions = [];
 
     for (const task of tasks) {
       const state = getTaskExecutionState(task);
+      const sourceTask = await strapi.db.query('api::task.task').findOne({
+        where: { documentId: task.sourceDocumentId },
+      });
       const execution = await strapi.db.query('api::task-execution.task-execution').create({
         data: {
           track_assignment: trackAssignment.id,
-          task: task.id,
+          task: sourceTask?.id ?? null,
+          task_source_document_id: task.sourceDocumentId,
+          task_snapshot: task,
           execution_status: state.execution_status,
           released_at: state.released_at,
           completed_at: null,
@@ -86,9 +91,6 @@ export default factories.createCoreService('api::task-execution.task-execution',
         track_assignment: {
           populate: ['user'],
         },
-        task: {
-          populate: ['depends_on'],
-        },
         evidences: true,
       },
     })) as
@@ -96,7 +98,7 @@ export default factories.createCoreService('api::task-execution.task-execution',
           id: TaskExecutionEntity['id'];
           execution_status?: TaskExecutionEntity['execution_status'];
           track_assignment?: TaskExecutionEntity['track_assignment'];
-          task?: TaskExecutionEntity['task'];
+          task_snapshot?: TaskExecutionEntity['task_snapshot'];
           evidences?: TaskExecutionEntity['evidences'];
         }
       | null;
@@ -124,7 +126,7 @@ export default factories.createCoreService('api::task-execution.task-execution',
       });
     }
 
-    if (execution.task?.requires_evidence && (execution.evidences?.length ?? 0) === 0) {
+    if (execution.task_snapshot?.requiresEvidence && (execution.evidences?.length ?? 0) === 0) {
       throw new ValidationError('Esta tarefa exige evidencia antes da conclusao', {
         code: 'TASK_EVIDENCE_REQUIRED',
         executionId,
@@ -139,7 +141,7 @@ export default factories.createCoreService('api::task-execution.task-execution',
       });
     }
 
-    if (execution.task?.requires_manual_approval) {
+    if (execution.task_snapshot?.requiresManualApproval) {
       await strapi.db.query('api::task-execution.task-execution').update({
         where: { id: execution.id },
         data: {
@@ -188,14 +190,13 @@ export default factories.createCoreService('api::task-execution.task-execution',
         track_assignment: {
           populate: ['user'],
         },
-        task: true,
       },
     })) as
       | {
           id: TaskExecutionEntity['id'];
           execution_status?: TaskExecutionEntity['execution_status'];
           track_assignment?: TaskExecutionEntity['track_assignment'];
-          task?: TaskExecutionEntity['task'];
+          task_snapshot?: TaskExecutionEntity['task_snapshot'];
         }
       | null;
 
@@ -247,26 +248,24 @@ export default factories.createCoreService('api::task-execution.task-execution',
   },
 
   async listExecutionsForAssignment(trackAssignmentId: number) {
-    return strapi.db.query('api::task-execution.task-execution').findMany({
+    const executions = await strapi.db.query('api::task-execution.task-execution').findMany({
       where: {
         track_assignment: {
           id: trackAssignmentId,
         },
       },
       populate: {
-        task: {
-          populate: ['depends_on'],
-        },
         evidences: {
           populate: ['file', 'submitted_by'],
         },
         validated_by: true,
       },
-      orderBy: {
-        task: {
-          order_index: 'asc',
-        },
-      },
     });
+
+    return executions.sort(
+      (left, right) =>
+        ((left.task_snapshot as TaskSnapshot | null)?.orderIndex ?? 0) -
+        ((right.task_snapshot as TaskSnapshot | null)?.orderIndex ?? 0)
+    );
   },
 }));

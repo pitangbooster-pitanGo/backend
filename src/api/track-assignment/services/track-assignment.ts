@@ -2,6 +2,10 @@ import { factories } from '@strapi/strapi';
 import { errors } from '@strapi/utils';
 
 import { findEntity, type RelationReference } from '../../../utils/relation-reference';
+import {
+  ensureCurrentTrackSnapshot,
+  type TrackSnapshot,
+} from '../../track/services/track-versioning';
 
 const { ApplicationError, ValidationError } = errors;
 
@@ -48,6 +52,12 @@ export default factories.createCoreService('api::track-assignment.track-assignme
       });
     }
 
+    const versionRecord = (await ensureCurrentTrackSnapshot(track.id, assignedByUserId)) as {
+      version: number;
+      content: TrackSnapshot;
+    };
+    const snapshot = versionRecord.content;
+
     const assignment = await strapi.service('api::track-assignment.track-assignment').create({
       ...query,
       data: {
@@ -59,7 +69,10 @@ export default factories.createCoreService('api::track-assignment.track-assignme
         progress_percentage: 0,
         started_at: null,
         completed_at: null,
-        track_version: track.version ?? 1,
+        track_version: versionRecord.version,
+        track_name: snapshot.name,
+        track_description: snapshot.description,
+        track_snapshot: snapshot,
       },
       populate: ['track'],
     });

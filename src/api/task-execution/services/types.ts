@@ -1,3 +1,5 @@
+import type { TaskSnapshot, TrackSnapshot } from '../../track/services/track-versioning';
+
 export type TaskEntity = {
   id: number;
   documentId?: string | null;
@@ -17,6 +19,7 @@ export type TrackAssignmentEntity = {
   track?: {
     id: number;
   } | null;
+  track_snapshot?: TrackSnapshot | null;
 };
 
 export type TaskExecutionEntity = {
@@ -27,5 +30,7 @@ export type TaskExecutionEntity = {
     user?: { id: number } | null;
   } | null;
   task?: TaskEntity | null;
+  task_source_document_id?: string | null;
+  task_snapshot?: TaskSnapshot | null;
   evidences?: Array<{ id: number }> | null;
 };

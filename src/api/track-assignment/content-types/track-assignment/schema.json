@@ -50,6 +50,17 @@
     "track_version": {
       "type": "integer",
       "required": true
+    },
+    "track_name": {
+      "type": "string",
+      "required": true
+    },
+    "track_description": {
+      "type": "text"
+    },
+    "track_snapshot": {
+      "type": "json",
+      "required": true
     }
   }
 }

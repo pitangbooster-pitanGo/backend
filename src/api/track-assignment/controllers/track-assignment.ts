@@ -25,13 +25,15 @@ export default factories.createCoreController('api::track-assignment.track-assig
       await this.validateInput(data, ctx);
       const sanitizedData = (await this.sanitizeInput(data, ctx)) as Record<string, unknown>;
 
-      const assignment = await strapi
-        .service('api::track-assignment.track-assignment')
-        .assignTrackToUser({
-          data: sanitizedData,
-          assignedByUserId: authUser.id,
-          query: sanitizedQuery,
-        });
+      const assignment = await strapi.db.transaction(() =>
+        strapi
+          .service('api::track-assignment.track-assignment')
+          .assignTrackToUser({
+            data: sanitizedData,
+            assignedByUserId: authUser.id,
+            query: sanitizedQuery,
+          })
+      );
       const sanitizedAssignment = await this.sanitizeOutput(assignment, ctx);
 
       ctx.status = 201;

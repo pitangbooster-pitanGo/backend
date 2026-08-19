@@ -349,6 +349,32 @@ POST {{baseUrl}}/task-executions/{{evidenceTaskExecutionId}}/complete
 Content-Type: application/json
 Authorization: Bearer {{jwtEmployee}}
 
+### Criar tarefa com materiais por link
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Authorization: Bearer {{jwtAtivo}}
+
+{
+  "data": {
+    "title": "Ler materiais de onboarding",
+    "order_index": 4,
+    "is_required": true,
+    "requires_evidence": false,
+    "requires_manual_approval": false,
+    "action_type": "reading",
+    "is_active": true,
+    "track": {{institutionalTrackId}},
+    "materials": [
+      {
+        "title": "Portal da empresa",
+        "material_type": "link",
+        "order_index": 0,
+        "external_url": "https://example.com/onboarding"
+      }
+    ]
+  }
+}
+
 ### Listar evidencias
 GET {{baseUrl}}/task-evidences?populate=*
 Authorization: Bearer {{jwtEmployee}}

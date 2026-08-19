@@ -5,6 +5,7 @@ import { validateTaskDependencies } from '../services/task-dependency';
 import { findEntity } from '../../../utils/relation-reference';
 import { logControllerError, rethrowStrapiError } from '../../../utils/controller-error';
 import { createNextTrackSnapshot } from '../../track/services/track-versioning';
+import { validateTaskMaterials } from '../services/task-material';
 import { recordAuditLog } from '../../../utils/audit-log';
 
 type TaskAuditSnapshot = {
@@ -33,6 +34,7 @@ export default factories.createCoreController('api::task.task', () => ({
 
       await this.validateInput(data, ctx);
       const sanitizedData = (await this.sanitizeInput(data, ctx)) as Record<string, unknown>;
+      await validateTaskMaterials(sanitizedData);
 
       ctx.request.body = {
         ...body,
@@ -82,6 +84,7 @@ export default factories.createCoreController('api::task.task', () => ({
 
       await this.validateInput(data, ctx);
       const sanitizedData = (await this.sanitizeInput(data, ctx)) as Record<string, unknown>;
+      await validateTaskMaterials(sanitizedData);
 
       ctx.request.body = {
         ...body,

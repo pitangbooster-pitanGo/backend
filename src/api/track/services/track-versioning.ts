@@ -16,6 +16,25 @@ export type TaskSnapshot = {
   requiresEvidence: boolean;
   requiresManualApproval: boolean;
   dependsOn: string[];
+  materials: TaskMaterialSnapshot[];
+};
+
+export type TaskMaterialSnapshot = {
+  title: string;
+  description: string | null;
+  type: 'link' | 'pdf' | 'document' | 'video' | 'file';
+  orderIndex: number;
+  externalUrl: string | null;
+  file: {
+    id: number;
+    documentId: string | null;
+    name: string;
+    url: string;
+    mime: string;
+    size: number;
+    provider: string | null;
+    hash: string | null;
+  } | null;
 };
 
 export type TrackSnapshot = {
@@ -50,6 +69,24 @@ type TrackEntity = {
     requires_evidence?: boolean | null;
     requires_manual_approval?: boolean | null;
     depends_on?: Array<{ id: number; documentId?: string | null }> | null;
+    materials?: Array<{
+      id?: number;
+      title: string;
+      description?: string | null;
+      material_type: TaskMaterialSnapshot['type'];
+      order_index: number;
+      external_url?: string | null;
+      file?: {
+        id: number;
+        documentId?: string | null;
+        name: string;
+        url: string;
+        mime: string;
+        size: number | string;
+        provider?: string | null;
+        hash?: string | null;
+      } | null;
+    }> | null;
   }> | null;
 };
 
@@ -82,7 +119,14 @@ const loadTrack = async (reference: RelationReference): Promise<TrackEntity> => 
         ? { documentId: track.documentId }
         : { id: track.id },
     },
-    populate: ['depends_on'],
+    populate: {
+      depends_on: true,
+      materials: {
+        populate: {
+          file: true,
+        },
+      },
+    },
   })) as NonNullable<TrackEntity['tasks']>;
   const tasksByDocument = new Map<string, (typeof tasks)[number]>();
 
@@ -114,6 +158,30 @@ export const buildTrackSnapshot = (track: TrackEntity, version: number): TrackSn
       requiresEvidence: task.requires_evidence === true,
       requiresManualApproval: task.requires_manual_approval === true,
       dependsOn: (task.depends_on ?? []).map(sourceId),
+      materials: (task.materials ?? [])
+        .map<TaskMaterialSnapshot>((material) => ({
+          title: material.title,
+          description: material.description ?? null,
+          type: material.material_type,
+          orderIndex: material.order_index,
+          externalUrl: material.external_url ?? null,
+          file: material.file
+            ? {
+                id: material.file.id,
+                documentId: material.file.documentId ?? null,
+                name: material.file.name,
+                url: material.file.url,
+                mime: material.file.mime,
+                size: Number(material.file.size),
+                provider: material.file.provider ?? null,
+                hash: material.file.hash ?? null,
+              }
+            : null,
+        }))
+        .sort(
+          (left, right) =>
+            left.orderIndex - right.orderIndex || left.title.localeCompare(right.title)
+        ),
     }))
     .sort((left, right) => left.orderIndex - right.orderIndex);
 

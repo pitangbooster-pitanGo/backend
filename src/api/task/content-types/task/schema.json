@@ -60,6 +60,11 @@
     "requires_evidence": {
       "type": "boolean",
       "default": false
+    },
+    "materials": {
+      "type": "component",
+      "repeatable": true,
+      "component": "task.material"
     }
   }
 }

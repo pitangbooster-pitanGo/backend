@@ -1,0 +1,46 @@
+{
+  "collectionName": "components_task_materials",
+  "info": {
+    "displayName": "Material",
+    "description": "Material de apoio vinculado a uma tarefa"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "material_type": {
+      "type": "enumeration",
+      "enum": [
+        "link",
+        "pdf",
+        "document",
+        "video",
+        "file"
+      ],
+      "required": true
+    },
+    "order_index": {
+      "type": "integer",
+      "required": true,
+      "min": 0
+    },
+    "external_url": {
+      "type": "string"
+    },
+    "file": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "files",
+        "videos"
+      ]
+    }
+  },
+  "config": {}
+}

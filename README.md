@@ -92,6 +92,19 @@ Campos importantes:
 - `requires_manual_approval`: indica se a tarefa precisa de aprovação manual;
 - `requires_evidence`: indica se a tarefa exige alguma evidência;
 - `action_type`: classifica o tipo da tarefa, como leitura, formulário, upload ou link externo.
+- `materials`: lista ordenada de links e arquivos de apoio congelada nos snapshots.
+
+Cada material possui `title`, `material_type`, `order_index` e, conforme o
+tipo, `external_url` ou `file`. Links aceitam apenas HTTP/HTTPS. PDF,
+documento, vídeo e arquivo genérico exigem mídia enviada previamente. Arquivos
+de materiais têm limite de 200 MB; tipos específicos também validam o MIME.
+O campo legado `external_link` continua disponível para snapshots antigos.
+
+Os metadados completos do arquivo, inclusive provider e hash, são copiados
+para o snapshot. Perfis de gestão podem enviar arquivos, mas o endpoint de
+remoção do plugin de upload não é concedido pela aplicação. Objetos
+referenciados por snapshots não devem ser removidos pela Media Library nem
+diretamente no storage; limpeza de órfãos deve verificar todos os snapshots.
 
 ### Track Assignments
 

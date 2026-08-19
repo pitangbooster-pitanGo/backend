@@ -14,6 +14,14 @@ type Assignment = {
   track?: { id: number } | null;
 };
 
+const withCompatibleMaterials = (snapshot: TrackSnapshot): TrackSnapshot => ({
+  ...snapshot,
+  tasks: (snapshot.tasks ?? []).map((task) => ({
+    ...task,
+    materials: Array.isArray(task.materials) ? task.materials : [],
+  })),
+});
+
 const legacyTaskSnapshot = (task: any): TaskSnapshot => ({
   sourceDocumentId: task.documentId ?? String(task.id),
   title: task.title ?? '',
@@ -28,6 +36,7 @@ const legacyTaskSnapshot = (task: any): TaskSnapshot => ({
   dependsOn: (task.depends_on ?? []).map(
     (dependency: any) => dependency.documentId ?? String(dependency.id)
   ),
+  materials: [],
 });
 
 export const backfillTrackVersions = async (strapi: Core.Strapi) => {
@@ -37,12 +46,47 @@ export const backfillTrackVersions = async (strapi: Core.Strapi) => {
     await repairCurrentTrackSnapshot(track.id);
   }
 
+  const trackVersions = await strapi.db.query('api::track-version.track-version').findMany({});
+
+  for (const trackVersion of trackVersions as Array<{ id: number; content?: TrackSnapshot | null }>) {
+    if (
+      !trackVersion.content ||
+      trackVersion.content.tasks.every((task) => Array.isArray(task.materials))
+    ) {
+      continue;
+    }
+
+    await strapi.db.query('api::track-version.track-version').update({
+      where: { id: trackVersion.id },
+      data: {
+        content: withCompatibleMaterials(trackVersion.content),
+      },
+    });
+  }
+
   const assignments = (await strapi.db.query('api::track-assignment.track-assignment').findMany({
     populate: ['track'],
   })) as Assignment[];
 
   for (const assignment of assignments) {
-    if (!assignment.track?.id || assignment.track_snapshot) {
+    if (!assignment.track?.id) {
+      continue;
+    }
+
+    if (assignment.track_snapshot) {
+      if (
+        assignment.track_snapshot.tasks.some(
+          (task) => !Array.isArray(task.materials)
+        )
+      ) {
+        await strapi.db.query('api::track-assignment.track-assignment').update({
+          where: { id: assignment.id },
+          data: {
+            track_snapshot: withCompatibleMaterials(assignment.track_snapshot),
+          },
+        });
+      }
+
       continue;
     }
 
@@ -82,7 +126,23 @@ export const backfillTrackVersions = async (strapi: Core.Strapi) => {
   });
 
   for (const execution of executions as any[]) {
+    if (
+      execution.task_snapshot &&
+      Array.isArray(execution.task_snapshot.materials)
+    ) {
+      continue;
+    }
+
     if (execution.task_snapshot) {
+      await strapi.db.query('api::task-execution.task-execution').update({
+        where: { id: execution.id },
+        data: {
+          task_snapshot: {
+            ...execution.task_snapshot,
+            materials: [],
+          },
+        },
+      });
       continue;
     }
 

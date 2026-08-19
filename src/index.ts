@@ -10,6 +10,9 @@ export default {
   },
 
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
+    if (process.env.SKIP_APP_BOOTSTRAP === 'true') {
+      return;
+    }
     await seedUsersPermissions(strapi);
     await backfillTrackVersions(strapi);
   },

@@ -1,0 +1,4 @@
+PITANG BOOSTER — MATERIAL DE DEMONSTRAÇÃO
+
+Este arquivo existe apenas para demonstrar o download de materiais em ambiente local.
+Substitua-o pelo documento oficial antes de utilizar o sistema em produção.

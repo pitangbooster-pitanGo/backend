@@ -69,6 +69,18 @@ Campos importantes:
 - `is_active`: controla se a trilha está ativa;
 - `created_by_user`: registra quem criou a trilha.
 
+O campo `version` é controlado pelo backend. Trilhas começam na versão `1` e
+qualquer criação, alteração ou exclusão de tarefa gera automaticamente uma nova
+versão. Cada versão guarda um snapshot imutável com os metadados da trilha,
+as tarefas e suas dependências.
+
+```txt
+GET /tracks/:documentId/details
+GET /tracks/:documentId/details?version=1
+```
+
+O frontend não deve enviar nem incrementar `version`.
+
 ### Tasks
 
 Representam as tarefas de uma trilha. Cada tarefa possui uma ordem, tipo de ação e possíveis regras adicionais.
@@ -84,6 +96,11 @@ Campos importantes:
 ### Track Assignments
 
 Representam uma trilha atribuída a um usuário. Guardam status, progresso, usuário responsável, quem atribuiu e a versão da trilha no momento da atribuição.
+
+Além do número da versão, a atribuição congela `track_name`,
+`track_description` e `track_snapshot`. As execuções também guardam
+`task_snapshot`, de modo que alterações posteriores na trilha não alteram
+atribuições já criadas.
 
 Status possíveis:
 
@@ -142,6 +159,7 @@ Além dos CRUDs gerados pelo Strapi, o projeto possui rotas específicas para os
 GET /me
 GET /my-track-assignments
 GET /my-track-assignments/:id/tasks
+GET /tracks/:documentId/details
 POST /task-executions/:id/complete
 ```
 

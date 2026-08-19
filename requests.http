@@ -139,7 +139,6 @@ Authorization: Bearer {{jwtAtivo}}
     "name": "Onboarding Institucional",
     "description": "Trilha inicial com conteudos gerais sobre a empresa, cultura, ferramentas e processos internos.",
     "track_type": "institutional",
-    "version": 1,
     "is_active": true
   }
 }
@@ -154,7 +153,6 @@ Authorization: Bearer {{jwtAtivo}}
     "name": "Onboarding Projeto Tramontina",
     "description": "Trilha com atividades especificas para entendimento do contexto, arquitetura e fluxo de trabalho do projeto Tramontina.",
     "track_type": "project",
-    "version": 1,
     "is_active": true,
     "projects": [{{projectId}}]
   }
@@ -162,6 +160,14 @@ Authorization: Bearer {{jwtAtivo}}
 
 ### Listar trilhas com tarefas e projetos
 GET {{baseUrl}}/tracks?populate=*
+Authorization: Bearer {{jwtAtivo}}
+
+### Detalhes da versao atual da trilha
+GET {{baseUrl}}/tracks/{{institutionalTrackId}}/details
+Authorization: Bearer {{jwtAtivo}}
+
+### Detalhes de uma versao especifica da trilha
+GET {{baseUrl}}/tracks/{{institutionalTrackId}}/details?version=1
 Authorization: Bearer {{jwtAtivo}}
 
 ### Criar tarefa institucional 1

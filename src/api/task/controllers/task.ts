@@ -5,6 +5,16 @@ import { validateTaskDependencies } from '../services/task-dependency';
 import { findEntity } from '../../../utils/relation-reference';
 import { logControllerError, rethrowStrapiError } from '../../../utils/controller-error';
 import { createNextTrackSnapshot } from '../../track/services/track-versioning';
+import { recordAuditLog } from '../../../utils/audit-log';
+
+type TaskAuditSnapshot = {
+  id: number;
+  documentId?: string | null;
+  track?: { id: number } | null;
+  depends_on?: Array<{ id: number }> | null;
+};
+
+const TASK_AUDIT_POPULATE = ['track', 'depends_on'];
 
 type RequestBody = {
   data?: Record<string, unknown>;
@@ -34,15 +44,23 @@ export default factories.createCoreController('api::task.task', () => ({
       return strapi.db.transaction(async ({ trx }) => {
         const response = await super.create(ctx);
         const taskReference = responseReference(response);
-        const createdTask = await findEntity<{ track?: { id: number } | null }>(
+        const createdTask = await findEntity<TaskAuditSnapshot>(
           'api::task.task',
           taskReference,
-          ['track']
+          TASK_AUDIT_POPULATE
         );
 
         if (createdTask?.track?.id) {
           await createNextTrackSnapshot(createdTask.track.id, ctx.state.user?.id, trx);
         }
+
+        await recordAuditLog({
+          entityType: 'task',
+          entityId: createdTask?.documentId ?? (typeof taskReference === 'string' ? taskReference : null),
+          action: 'create',
+          actorId: ctx.state.user?.id,
+          after: createdTask,
+        });
 
         return response;
       });
@@ -70,11 +88,11 @@ export default factories.createCoreController('api::task.task', () => ({
         data: sanitizedData,
       };
 
-      const currentTask = await findEntity<{
-        id: number;
-        order_index: number;
-        track?: { id: number } | null;
-      }>('api::task.task', ctx.params.id as string, ['track']);
+      const currentTask = await findEntity<TaskAuditSnapshot & { order_index: number }>(
+        'api::task.task',
+        ctx.params.id as string,
+        TASK_AUDIT_POPULATE
+      );
 
       if (!currentTask) {
         return ctx.notFound('Tarefa nao encontrada', {
@@ -87,10 +105,10 @@ export default factories.createCoreController('api::task.task', () => ({
 
       return strapi.db.transaction(async ({ trx }) => {
         const response = await super.update(ctx);
-        const updatedTask = await findEntity<{ track?: { id: number } | null }>(
+        const updatedTask = await findEntity<TaskAuditSnapshot>(
           'api::task.task',
           ctx.params.id as string,
-          ['track']
+          TASK_AUDIT_POPULATE
         );
         const affectedTrackIds = new Set(
           [currentTask.track?.id, updatedTask?.track?.id].filter(
@@ -101,6 +119,15 @@ export default factories.createCoreController('api::task.task', () => ({
         for (const trackId of affectedTrackIds) {
           await createNextTrackSnapshot(trackId, ctx.state.user?.id, trx);
         }
+
+        await recordAuditLog({
+          entityType: 'task',
+          entityId: currentTask.documentId ?? (ctx.params.id as string),
+          action: 'update',
+          actorId: ctx.state.user?.id,
+          before: currentTask,
+          after: updatedTask,
+        });
 
         return response;
       });
@@ -119,10 +146,10 @@ export default factories.createCoreController('api::task.task', () => ({
 
   async delete(ctx) {
     try {
-      const currentTask = await findEntity<{ track?: { id: number } | null }>(
+      const currentTask = await findEntity<TaskAuditSnapshot>(
         'api::task.task',
         ctx.params.id as string,
-        ['track']
+        TASK_AUDIT_POPULATE
       );
 
       if (!currentTask) {
@@ -138,6 +165,14 @@ export default factories.createCoreController('api::task.task', () => ({
         if (currentTask.track?.id) {
           await createNextTrackSnapshot(currentTask.track.id, ctx.state.user?.id, trx);
         }
+
+        await recordAuditLog({
+          entityType: 'task',
+          entityId: currentTask.documentId ?? (ctx.params.id as string),
+          action: 'delete',
+          actorId: ctx.state.user?.id,
+          before: currentTask,
+        });
 
         return response;
       });

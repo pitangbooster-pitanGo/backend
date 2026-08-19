@@ -1,10 +1,16 @@
 import { factories } from '@strapi/strapi';
 
-import { isPlainObject } from '../../../utils/relation-reference';
+import { findEntity, isPlainObject } from '../../../utils/relation-reference';
 import { logControllerError, rethrowStrapiError } from '../../../utils/controller-error';
+import { recordAuditLog } from '../../../utils/audit-log';
 
 type RequestBody = {
   data?: Record<string, unknown>;
+};
+
+type TrackAssignmentAuditSnapshot = {
+  id: number;
+  documentId?: string | null;
 };
 
 export default factories.createCoreController('api::track-assignment.track-assignment', () => ({
@@ -34,6 +40,14 @@ export default factories.createCoreController('api::track-assignment.track-assig
             query: sanitizedQuery,
           })
       );
+      await recordAuditLog({
+        entityType: 'track-assignment',
+        entityId: (assignment as TrackAssignmentAuditSnapshot)?.documentId ?? null,
+        action: 'create',
+        actorId: authUser.id,
+        after: assignment,
+      });
+
       const sanitizedAssignment = await this.sanitizeOutput(assignment, ctx);
 
       ctx.status = 201;
@@ -45,6 +59,107 @@ export default factories.createCoreController('api::track-assignment.track-assig
       });
       return ctx.internalServerError('Falha ao criar atribuicao de trilha', {
         code: 'TRACK_ASSIGNMENT_CREATE_FAILED',
+      });
+    }
+  },
+
+  async update(ctx) {
+    try {
+      const authUser = ctx.state.user;
+
+      if (!authUser) {
+        return ctx.unauthorized('Autenticacao obrigatoria', {
+          code: 'AUTH_REQUIRED',
+        });
+      }
+
+      const before = await findEntity<TrackAssignmentAuditSnapshot>(
+        'api::track-assignment.track-assignment',
+        ctx.params.id as string
+      );
+
+      if (!before) {
+        return ctx.notFound('Atribuicao de trilha nao encontrada', {
+          code: 'TRACK_ASSIGNMENT_NOT_FOUND',
+          assignmentId: ctx.params.id,
+        });
+      }
+
+      return strapi.db.transaction(async () => {
+        const response = await super.update(ctx);
+        const after = await findEntity<TrackAssignmentAuditSnapshot>(
+          'api::track-assignment.track-assignment',
+          ctx.params.id as string
+        );
+
+        await recordAuditLog({
+          entityType: 'track-assignment',
+          entityId: before.documentId ?? after?.documentId ?? (ctx.params.id as string),
+          action: 'update',
+          actorId: authUser.id,
+          before,
+          after,
+        });
+
+        return response;
+      });
+    } catch (error) {
+      rethrowStrapiError(error);
+      logControllerError('track-assignment.update', error, {
+        assignmentId: ctx.params.id,
+        userId: ctx.state.user?.id,
+      });
+      return ctx.internalServerError('Falha ao atualizar atribuicao de trilha', {
+        code: 'TRACK_ASSIGNMENT_UPDATE_FAILED',
+        assignmentId: ctx.params.id,
+      });
+    }
+  },
+
+  async delete(ctx) {
+    try {
+      const authUser = ctx.state.user;
+
+      if (!authUser) {
+        return ctx.unauthorized('Autenticacao obrigatoria', {
+          code: 'AUTH_REQUIRED',
+        });
+      }
+
+      const currentAssignment = await findEntity<TrackAssignmentAuditSnapshot>(
+        'api::track-assignment.track-assignment',
+        ctx.params.id as string
+      );
+
+      if (!currentAssignment) {
+        return ctx.notFound('Atribuicao de trilha nao encontrada', {
+          code: 'TRACK_ASSIGNMENT_NOT_FOUND',
+          assignmentId: ctx.params.id,
+        });
+      }
+
+      return strapi.db.transaction(async () => {
+        const response = await super.delete(ctx);
+
+        await recordAuditLog({
+          entityType: 'track-assignment',
+          entityId: currentAssignment.documentId ?? (ctx.params.id as string),
+          action: 'delete',
+          actorId: authUser.id,
+          before: currentAssignment,
+        });
+
+        return response;
+      });
+    } catch (error) {
+      rethrowStrapiError(error);
+      logControllerError('track-assignment.delete', error, {
+        assignmentId: ctx.params.id,
+        userId: ctx.state.user?.id,
+      });
+      return ctx.internalServerError('Falha ao excluir atribuicao de trilha', {
+        code: 'TRACK_ASSIGNMENT_DELETE_FAILED',
+        assignmentId: ctx.params.id,
       });
     }
   },

@@ -1,11 +1,18 @@
 import { factories } from '@strapi/strapi';
 
 import { logControllerError, rethrowStrapiError } from '../../../utils/controller-error';
+import { findEntity } from '../../../utils/relation-reference';
+import { recordAuditLog } from '../../../utils/audit-log';
 import {
   createNextTrackSnapshot,
   ensureCurrentTrackSnapshot,
   findTrackSnapshot,
 } from '../services/track-versioning';
+
+type TrackAuditSnapshot = {
+  id: number;
+  documentId?: string | null;
+};
 
 type TrackRequestBody = {
   data?: Record<string, unknown>;
@@ -50,6 +57,18 @@ export default factories.createCoreController('api::track.track', () => ({
           await ensureCurrentTrackSnapshot(reference, authUser.id);
         }
 
+        const createdTrack = reference
+          ? await findEntity<TrackAuditSnapshot>('api::track.track', reference)
+          : null;
+
+        await recordAuditLog({
+          entityType: 'track',
+          entityId: createdTrack?.documentId ?? (typeof reference === 'string' ? reference : null),
+          action: 'create',
+          actorId: authUser.id,
+          after: createdTrack,
+        });
+
         return response;
       });
     } catch (error) {
@@ -89,6 +108,11 @@ export default factories.createCoreController('api::track.track', () => ({
         };
       }
 
+      const beforeTrack = await findEntity<TrackAuditSnapshot>(
+        'api::track.track',
+        ctx.params.id as string
+      );
+
       return strapi.db.transaction(async ({ trx }) => {
         const response = await super.update(ctx);
         const versionRecord = (await createNextTrackSnapshot(
@@ -102,6 +126,20 @@ export default factories.createCoreController('api::track.track', () => ({
           responseData.version = versionRecord.version;
         }
 
+        const afterTrack = await findEntity<TrackAuditSnapshot>(
+          'api::track.track',
+          ctx.params.id as string
+        );
+
+        await recordAuditLog({
+          entityType: 'track',
+          entityId: beforeTrack?.documentId ?? afterTrack?.documentId ?? (ctx.params.id as string),
+          action: 'update',
+          actorId: authUser.id,
+          before: beforeTrack,
+          after: afterTrack,
+        });
+
         return response;
       });
     } catch (error) {
@@ -112,6 +150,54 @@ export default factories.createCoreController('api::track.track', () => ({
       });
       return ctx.internalServerError('Falha ao atualizar trilha', {
         code: 'TRACK_UPDATE_FAILED',
+        trackId: ctx.params.id,
+      });
+    }
+  },
+
+  async delete(ctx) {
+    try {
+      const authUser = ctx.state.user;
+
+      if (!authUser) {
+        return ctx.unauthorized('Autenticação obrigatória', {
+          code: 'AUTH_REQUIRED',
+        });
+      }
+
+      const currentTrack = await findEntity<TrackAuditSnapshot>(
+        'api::track.track',
+        ctx.params.id as string
+      );
+
+      if (!currentTrack) {
+        return ctx.notFound('Trilha nao encontrada', {
+          code: 'TRACK_NOT_FOUND',
+          trackId: ctx.params.id,
+        });
+      }
+
+      return strapi.db.transaction(async () => {
+        const response = await super.delete(ctx);
+
+        await recordAuditLog({
+          entityType: 'track',
+          entityId: currentTrack.documentId ?? (ctx.params.id as string),
+          action: 'delete',
+          actorId: authUser.id,
+          before: currentTrack,
+        });
+
+        return response;
+      });
+    } catch (error) {
+      rethrowStrapiError(error);
+      logControllerError('track.delete', error, {
+        trackId: ctx.params.id,
+        userId: ctx.state.user?.id,
+      });
+      return ctx.internalServerError('Falha ao excluir trilha', {
+        code: 'TRACK_DELETE_FAILED',
         trackId: ctx.params.id,
       });
     }

@@ -50,6 +50,8 @@ const managementActions = [
   'api::task-execution.task-execution.attachEvidence',
   'api::task-evidence.task-evidence.find',
   'api::task-evidence.task-evidence.findOne',
+  'api::audit-log.audit-log.find',
+  'api::audit-log.audit-log.findOne',
   'plugin::users-permissions.role.find',
   'plugin::users-permissions.role.findOne',
   'plugin::users-permissions.user.find',

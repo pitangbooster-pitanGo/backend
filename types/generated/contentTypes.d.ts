@@ -523,8 +523,11 @@ export interface ApiTaskEvidenceTaskEvidence
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    file: Schema.Attribute.Media<'images' | 'files' | 'videos'> &
-      Schema.Attribute.Required;
+    evidence_type: Schema.Attribute.Enumeration<['file', 'link']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'file'>;
+    external_url: Schema.Attribute.String;
+    file: Schema.Attribute.Media<'images' | 'files'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -589,6 +592,7 @@ export interface ApiTaskExecutionTaskExecution
     notes: Schema.Attribute.Text;
     publishedAt: Schema.Attribute.DateTime;
     released_at: Schema.Attribute.DateTime;
+    review_feedback: Schema.Attribute.Text;
     task: Schema.Attribute.Relation<'manyToOne', 'api::task.task'>;
     task_snapshot: Schema.Attribute.JSON & Schema.Attribute.Required;
     task_source_document_id: Schema.Attribute.String &

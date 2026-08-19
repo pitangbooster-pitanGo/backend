@@ -32,5 +32,10 @@ export type TaskExecutionEntity = {
   task?: TaskEntity | null;
   task_source_document_id?: string | null;
   task_snapshot?: TaskSnapshot | null;
-  evidences?: Array<{ id: number }> | null;
+  evidences?: Array<{
+    id: number;
+    evidence_type?: 'file' | 'link' | null;
+    file?: { id: number } | null;
+    external_url?: string | null;
+  }> | null;
 };

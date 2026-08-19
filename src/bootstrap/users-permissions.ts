@@ -43,11 +43,13 @@ const managementActions = [
   'api::task-execution.task-execution.find',
   'api::task-execution.task-execution.findOne',
   'api::task-execution.task-execution.create',
-  'api::task-execution.task-execution.update',
   'api::task-execution.task-execution.delete',
   'api::task-execution.task-execution.listForMyAssignment',
   'api::task-execution.task-execution.complete',
   'api::task-execution.task-execution.attachEvidence',
+  'api::task-execution.task-execution.removeEvidence',
+  'api::task-execution.task-execution.approve',
+  'api::task-execution.task-execution.reject',
   'api::task-evidence.task-evidence.find',
   'api::task-evidence.task-evidence.findOne',
   'api::audit-log.audit-log.find',
@@ -58,6 +60,7 @@ const managementActions = [
   'plugin::users-permissions.user.findOne',
   'plugin::users-permissions.user.create',
   'plugin::users-permissions.user.update',
+  'plugin::upload.content-api.upload',
 ];
 
 const employeeActions = [
@@ -73,8 +76,7 @@ const employeeActions = [
   'api::task-execution.task-execution.listForMyAssignment',
   'api::task-execution.task-execution.complete',
   'api::task-execution.task-execution.attachEvidence',
-  'api::task-evidence.task-evidence.find',
-  'api::task-evidence.task-evidence.findOne',
+  'api::task-execution.task-execution.removeEvidence',
 ];
 
 const roleSeeds: RoleSeed[] = [
@@ -198,6 +200,27 @@ const ensureRolePermissions = async (
   }
 };
 
+const revokeRolePermissions = async (
+  strapi: Core.Strapi,
+  roleId: number,
+  permissions: string[]
+) => {
+  const existingPermissions = await strapi.db
+    .query('plugin::users-permissions.permission')
+    .findMany({
+      where: {
+        role: { id: roleId },
+        action: { $in: permissions },
+      },
+    });
+
+  for (const permission of existingPermissions) {
+    await strapi.db.query('plugin::users-permissions.permission').delete({
+      where: { id: permission.id },
+    });
+  }
+};
+
 const ensureSeedUser = async (strapi: Core.Strapi, userSeed: UserSeed) => {
   const role = await strapi.db.query('plugin::users-permissions.role').findOne({
     where: { type: userSeed.roleType },
@@ -243,6 +266,20 @@ export const seedUsersPermissions = async (strapi: Core.Strapi) => {
   for (const roleSeed of roleSeeds) {
     const roleId = await ensureRole(strapi, roleSeed);
     await ensureRolePermissions(strapi, roleId, roleSeed.permissions);
+
+    if (roleSeed.type === 'employee') {
+      await revokeRolePermissions(strapi, roleId, [
+        'api::task-evidence.task-evidence.find',
+        'api::task-evidence.task-evidence.findOne',
+        'plugin::upload.content-api.upload',
+        'plugin::upload.content-api.destroy',
+      ]);
+    } else {
+      await revokeRolePermissions(strapi, roleId, [
+        'api::task-execution.task-execution.update',
+        'plugin::upload.content-api.destroy',
+      ]);
+    }
   }
 
   for (const userSeed of userSeeds) {

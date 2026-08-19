@@ -20,12 +20,23 @@
     "file": {
       "type": "media",
       "multiple": false,
-      "required": true,
+      "required": false,
       "allowedTypes": [
         "images",
-        "files",
-        "videos"
+        "files"
       ]
+    },
+    "evidence_type": {
+      "type": "enumeration",
+      "enum": [
+        "file",
+        "link"
+      ],
+      "required": true,
+      "default": "file"
+    },
+    "external_url": {
+      "type": "string"
     },
     "submitted_by": {
       "type": "relation",

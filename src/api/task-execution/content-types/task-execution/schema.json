@@ -52,6 +52,9 @@
     "notes": {
       "type": "text"
     },
+    "review_feedback": {
+      "type": "text"
+    },
     "validated_by": {
       "type": "relation",
       "relation": "manyToOne",

@@ -126,6 +126,30 @@ Status possíveis:
 
 Representam a execução de uma tarefa dentro de uma trilha atribuída. Essa entidade permite acompanhar o estado individual de cada tarefa para cada colaborador.
 
+### Evidências
+
+Evidências são entidades relacionadas à execução, possuem tipo `file` ou
+`link`, autor e comentário opcional. Colaboradores enviam e removem evidências somente pelas
+rotas operacionais:
+
+```txt
+POST /my-task-executions/:executionDocumentId/evidences
+DELETE /my-task-executions/:executionDocumentId/evidences/:evidenceDocumentId
+```
+
+Arquivos usam `multipart/form-data`, no campo `files`. Links usam JSON com
+`evidence_type: "link"` e `external_url`. São aceitas no máximo cinco
+evidências por execução. Cada arquivo pode ter até 10 MB e deve ser PDF, PNG,
+JPG ou JPEG. Inclusão e remoção são permitidas apenas enquanto a execução está
+`available`, `in_progress` ou `rejected`.
+
+A listagem global `/task-evidences` é restrita aos perfis de gestão. O
+colaborador recebe suas evidências junto com:
+
+```txt
+GET /my-track-assignments/:id/tasks
+```
+
 Status possíveis:
 
 - `locked`;
@@ -152,6 +176,12 @@ Algumas regras implementadas no backend:
 - tarefas com dependência começam como `locked`;
 - o progresso da trilha é calculado com base nas tarefas concluídas;
 - tarefas que exigem aprovação manual viram `submitted` e não contam como concluídas até aprovação.
+- avaliações usam `POST /task-executions/:id/approve` ou
+  `POST /task-executions/:id/reject`; rejeição exige `review_feedback`;
+- uma execução rejeitada pode receber nova evidência e ser reenviada, voltando
+  para `submitted` com a avaliação anterior limpa;
+- conclusão, aprovação, liberação de dependências e progresso são atualizados
+  dentro de transações de banco.
 
 ## Autenticação e Autorização
 

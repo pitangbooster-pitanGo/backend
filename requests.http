@@ -21,6 +21,8 @@
 @taskExecutionId = 1
 @evidenceTaskId = 4
 @evidenceTaskExecutionId = 1
+@evidenceTaskExecutionDocumentId = COLE_AQUI_O_DOCUMENT_ID_DA_EXECUCAO
+@evidenceDocumentId = COLE_AQUI_O_DOCUMENT_ID_DA_EVIDENCIA
 @evidenceFilePath = /tmp/pitango-evidence.txt
 
 ### Login
@@ -328,8 +330,8 @@ POST {{baseUrl}}/task-executions/{{evidenceTaskExecutionId}}/complete
 Content-Type: application/json
 Authorization: Bearer {{jwtEmployee}}
 
-### Anexar evidencia na task execution
-POST {{baseUrl}}/task-executions/{{evidenceTaskExecutionId}}/evidences
+### Anexar evidencia na task execution usando documentId
+POST {{baseUrl}}/my-task-executions/{{evidenceTaskExecutionDocumentId}}/evidences
 Authorization: Bearer {{jwtEmployee}}
 Content-Type: multipart/form-data; boundary=EvidenceBoundary
 
@@ -338,16 +340,55 @@ Content-Disposition: form-data; name="notes"
 
 Comprovante enviado pelo requests.http
 --EvidenceBoundary
-Content-Disposition: form-data; name="files"; filename="pitango-evidence.txt"
-Content-Type: text/plain
+Content-Disposition: form-data; name="files"; filename="pitango-evidence.pdf"
+Content-Type: application/pdf
 
 < {{evidenceFilePath}}
 --EvidenceBoundary--
+
+### Remover evidencia antes da submissao/conclusao
+DELETE {{baseUrl}}/my-task-executions/{{evidenceTaskExecutionDocumentId}}/evidences/{{evidenceDocumentId}}
+Authorization: Bearer {{jwtEmployee}}
 
 ### Concluir task execution com evidencia anexada
 POST {{baseUrl}}/task-executions/{{evidenceTaskExecutionId}}/complete
 Content-Type: application/json
 Authorization: Bearer {{jwtEmployee}}
+
+### Anexar evidencia por link
+POST {{baseUrl}}/my-task-executions/{{evidenceTaskExecutionDocumentId}}/evidences
+Content-Type: application/json
+Authorization: Bearer {{jwtEmployee}}
+
+{
+  "data": {
+    "evidence_type": "link",
+    "external_url": "https://example.com/evidencia",
+    "notes": "Evidencia externa"
+  }
+}
+
+### Aprovar execucao submetida
+POST {{baseUrl}}/task-executions/{{evidenceTaskExecutionId}}/approve
+Content-Type: application/json
+Authorization: Bearer {{jwtAtivo}}
+
+{
+  "data": {
+    "review_feedback": "Evidencia conferida."
+  }
+}
+
+### Rejeitar execucao submetida
+POST {{baseUrl}}/task-executions/{{evidenceTaskExecutionId}}/reject
+Content-Type: application/json
+Authorization: Bearer {{jwtAtivo}}
+
+{
+  "data": {
+    "review_feedback": "Envie um documento legivel."
+  }
+}
 
 ### Criar tarefa com materiais por link
 POST {{baseUrl}}/tasks
@@ -375,7 +416,7 @@ Authorization: Bearer {{jwtAtivo}}
   }
 }
 
-### Listar evidencias
+### Listar evidencias globalmente - employee deve receber 403
 GET {{baseUrl}}/task-evidences?populate=*
 Authorization: Bearer {{jwtEmployee}}
 

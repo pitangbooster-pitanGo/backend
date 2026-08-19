@@ -1,0 +1,44 @@
+{
+  "kind": "collectionType",
+  "collectionName": "audit_logs",
+  "info": {
+    "singularName": "audit-log",
+    "pluralName": "audit-logs",
+    "displayName": "Audit Log"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": true
+    },
+    "content-type-builder": {
+      "visible": false
+    }
+  },
+  "attributes": {
+    "entity_type": {
+      "type": "enumeration",
+      "enum": ["task", "track", "track-assignment"],
+      "required": true
+    },
+    "entity_id": {
+      "type": "string",
+      "required": true
+    },
+    "action": {
+      "type": "enumeration",
+      "enum": ["create", "update", "delete"],
+      "required": true
+    },
+    "actor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "changes": {
+      "type": "json"
+    }
+  }
+}

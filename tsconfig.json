@@ -12,6 +12,10 @@
     "resolveJsonModule": true,
     "noEmitOnError": true,
     "noImplicitThis": true,
+    // Necessário para o v8 coverage do Vitest remapear a execução do
+    // código já compilado (Strapi roda a partir de dist/, fora do pipeline
+    // do Vitest) de volta para as linhas originais em src/**/*.ts.
+    "sourceMap": true,
     "outDir": "dist",
     "rootDir": "."
   },
@@ -36,8 +40,11 @@
 
     // Do not include admin files in the server compilation
     "src/admin/",
-    // Do not include test files
+    // Do not include test files/config — vitest transforms these itself and
+    // they aren't part of the app bundle
     "**/*.test.*",
+    "tests/",
+    "vitest.config.ts",
     // Do not include plugins in the server compilation
     "src/plugins/**"
   ]

@@ -1,5 +1,7 @@
 import { errors } from '@strapi/utils';
 
+import { logError } from './logger';
+
 export const getErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
 
@@ -9,13 +11,15 @@ export const rethrowStrapiError = (error: unknown) => {
   }
 };
 
+/**
+ * Mantido com a mesma assinatura para não tocar nos ~25 call sites existentes.
+ * A diferença é que agora delega para `logError`, que serializa o erro
+ * (preservando stack e code) e anexa requestId + userId automaticamente.
+ */
 export const logControllerError = (
   scope: string,
   error: unknown,
   context?: Record<string, unknown>
 ) => {
-  strapi.log.error(`[${scope}] ${getErrorMessage(error, 'Erro inesperado')}`, {
-    ...context,
-    error,
-  });
+  logError(scope, error, context);
 };

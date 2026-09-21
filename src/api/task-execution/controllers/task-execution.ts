@@ -3,6 +3,7 @@ import { errors } from '@strapi/utils';
 import type { UID } from '@strapi/types';
 
 import { logControllerError, rethrowStrapiError } from '../../../utils/controller-error';
+import { logEvent } from '../../../utils/logger';
 
 const { ValidationError } = errors;
 const taskEvidenceUid = 'api::task-evidence.task-evidence' as UID.ContentType;
@@ -68,6 +69,12 @@ const handleReview = async (
           ? bodyData.review_feedback
           : null
       );
+    logEvent(decision === 'approve' ? 'task-execution.approved' : 'task-execution.rejected', {
+      executionReference: reference,
+      reviewerUserId: authUser.id,
+      decision,
+    });
+
     const sanitizedExecution = await controller.sanitizeOutput(execution, ctx);
 
     return controller.transformResponse(sanitizedExecution);
@@ -169,6 +176,11 @@ export default factories.createCoreController('api::task-execution.task-executio
       await strapi
         .service('api::task-execution.task-execution')
         .completeExecution(reference, authUser.id);
+
+      logEvent('task-execution.completed', {
+        executionReference: reference,
+        userId: authUser.id,
+      });
     } catch (error) {
       rethrowStrapiError(error);
       logControllerError('task-execution.complete', error, {
@@ -246,6 +258,12 @@ export default factories.createCoreController('api::task-execution.task-executio
             typeof bodyData.external_url === 'string' ? bodyData.external_url : null,
           notes: typeof bodyData.notes === 'string' ? bodyData.notes : null,
         });
+      logEvent('task-evidence.attached', {
+        executionReference: reference,
+        userId: authUser.id,
+        evidenceCount: Array.isArray(evidences) ? evidences.length : 1,
+      });
+
       const evidenceContentType = strapi.contentType(taskEvidenceUid);
       const sanitizedEvidences = await strapi.contentAPI.sanitize.output(
         evidences,
@@ -303,6 +321,12 @@ export default factories.createCoreController('api::task-execution.task-executio
           evidenceReference,
           userId: authUser.id,
         });
+
+      logEvent('task-evidence.removed', {
+        executionReference: reference,
+        evidenceReference,
+        userId: authUser.id,
+      });
 
       ctx.status = 204;
     } catch (error) {

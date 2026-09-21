@@ -2,6 +2,7 @@ import { factories } from '@strapi/strapi';
 
 import { findEntity, isPlainObject } from '../../../utils/relation-reference';
 import { logControllerError, rethrowStrapiError } from '../../../utils/controller-error';
+import { logEvent } from '../../../utils/logger';
 import { recordAuditLog } from '../../../utils/audit-log';
 
 type RequestBody = {
@@ -46,6 +47,11 @@ export default factories.createCoreController('api::track-assignment.track-assig
         action: 'create',
         actorId: authUser.id,
         after: assignment,
+      });
+
+      logEvent('track-assignment.created', {
+        assignmentId: (assignment as TrackAssignmentAuditSnapshot)?.documentId ?? null,
+        assignedByUserId: authUser.id,
       });
 
       const sanitizedAssignment = await this.sanitizeOutput(assignment, ctx);
@@ -101,6 +107,11 @@ export default factories.createCoreController('api::track-assignment.track-assig
           after,
         });
 
+        logEvent('track-assignment.updated', {
+          assignmentId: before.documentId ?? (ctx.params.id as string),
+          userId: authUser.id,
+        });
+
         return response;
       });
     } catch (error) {
@@ -147,6 +158,11 @@ export default factories.createCoreController('api::track-assignment.track-assig
           action: 'delete',
           actorId: authUser.id,
           before: currentAssignment,
+        });
+
+        logEvent('track-assignment.deleted', {
+          assignmentId: currentAssignment.documentId ?? (ctx.params.id as string),
+          userId: authUser.id,
         });
 
         return response;

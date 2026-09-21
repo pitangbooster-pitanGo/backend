@@ -1,5 +1,7 @@
 import { errors } from '@strapi/utils';
 
+import { logWarn } from '../utils/logger';
+
 const { ApplicationError, PolicyError, UnauthorizedError } = errors;
 
 type PolicyContext = {
@@ -50,6 +52,10 @@ export default async (policyContext: PolicyContext, config: PolicyConfig = {}) =
   }
 
   if (!user?.role) {
+    logWarn('Policy.has-role', 'Usuario sem perfil atribuido', {
+      userId: authUser.id,
+      allowedRoles,
+    });
     throw new PolicyError('Perfil não encontrado', {
       code: 'USER_ROLE_NOT_FOUND',
       policy: 'has-role',
@@ -61,6 +67,12 @@ export default async (policyContext: PolicyContext, config: PolicyConfig = {}) =
     allowedRoles.includes(user.role.type) || allowedRoles.includes(user.role.name);
 
   if (!matchesRole) {
+    // Tentativa de acesso indevido: antes disso era completamente invisível.
+    logWarn('Policy.has-role', 'Acesso negado por perfil', {
+      userId: authUser.id,
+      allowedRoles,
+      currentRole: user.role.type ?? user.role.name,
+    });
     throw new PolicyError('Usuário sem permissão para acessar este recurso', {
       code: 'USER_ROLE_FORBIDDEN',
       policy: 'has-role',

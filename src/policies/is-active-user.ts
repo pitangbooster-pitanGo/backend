@@ -1,5 +1,7 @@
 import { errors } from '@strapi/utils';
 
+import { logWarn } from '../utils/logger';
+
 const { ApplicationError, PolicyError, UnauthorizedError } = errors;
 
 type PolicyContext = {
@@ -49,6 +51,9 @@ export default async (policyContext: PolicyContext) => {
   }
 
   if (user.blocked) {
+    logWarn('Policy.is-active-user', 'Acesso negado a usuario bloqueado', {
+      userId: authUser.id,
+    });
     throw new PolicyError('Usuário bloqueado', {
       code: 'USER_BLOCKED',
       policy: 'is-active-user',
@@ -58,6 +63,9 @@ export default async (policyContext: PolicyContext) => {
 
   // If the field exists and is explicitly false, block the request.
   if (user.is_active === false) {
+    logWarn('Policy.is-active-user', 'Acesso negado a usuario inativo', {
+      userId: authUser.id,
+    });
     throw new PolicyError('Usuário inativo', {
       code: 'USER_INACTIVE',
       policy: 'is-active-user',

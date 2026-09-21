@@ -68,12 +68,16 @@ export default {
         is_active: sanitizedUser.is_active,
         createdAt: sanitizedUser.createdAt,
         updatedAt: sanitizedUser.updatedAt,
-        role: sanitizedUser.role
+        // Lido de `user` (não `sanitizedUser`): o content API restringe
+        // relações a quem tem permissão de listagem no content-type, e
+        // roles como employee não têm `user.find`/`findOne` — sem isso,
+        // um usuário não veria a própria role neste endpoint de perfil.
+        role: user.role
           ? {
-              id: sanitizedUser.role.id,
-              name: sanitizedUser.role.name,
-              description: sanitizedUser.role.description,
-              type: sanitizedUser.role.type,
+              id: user.role.id,
+              name: user.role.name,
+              description: user.role.description,
+              type: user.role.type,
             }
           : null,
       };

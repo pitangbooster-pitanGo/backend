@@ -23,5 +23,10 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      # Testes unitários das regras de negócio: não precisam de banco nem de Strapi.
+      # (Integração e E2E exigem Postgres + Strapi + Playwright — ver docs/testing.md §6.)
+      - name: Unit tests
+        run: yarn test:unit
+
       - name: Build
         run: yarn build

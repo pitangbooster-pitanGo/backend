@@ -35,6 +35,53 @@ const parseBodyData = (data: unknown) => {
 const executionReference = (ctx) =>
   ctx.params.executionDocumentId ?? ctx.params.id;
 
+type RawExecution = { id: number; evidences?: unknown };
+
+/**
+ * Reanexa as evidências ao resultado já sanitizado.
+ *
+ * `sanitizeOutput` do task-execution REMOVE a relação `evidences` para o
+ * colaborador: a role `employee` não tem permissão de leitura em
+ * `api::task-evidence` (revogada de propósito no seed), e a sanitização por
+ * permissão derruba a relação inteira. O efeito era o colaborador nunca ver as
+ * próprias evidências — o upload dava certo, mas a tela continuava pedindo
+ * evidência e a conclusão travava na validação do cliente.
+ *
+ * Estes endpoints já validam a posse (a execução é da atribuição do próprio
+ * usuário), então sanitizamos as evidências contra o content-type delas —
+ * mesmo caminho que `attachEvidence` sempre usou.
+ */
+const attachSanitizedEvidences = async (
+  ctx,
+  sanitized: unknown,
+  raw: RawExecution | RawExecution[] | null
+) => {
+  const evidenceContentType = strapi.contentType(taskEvidenceUid);
+  const rawList = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  const evidencesByExecutionId = new Map(rawList.map((item) => [item.id, item.evidences ?? []]));
+
+  const withEvidences = async (execution: { id?: number } | null) => {
+    if (!execution) {
+      return execution;
+    }
+
+    return {
+      ...execution,
+      evidences: await strapi.contentAPI.sanitize.output(
+        evidencesByExecutionId.get(execution.id as number) ?? [],
+        evidenceContentType,
+        { auth: ctx.state.auth }
+      ),
+    };
+  };
+
+  if (Array.isArray(sanitized)) {
+    return Promise.all((sanitized as Array<{ id?: number }>).map(withEvidences));
+  }
+
+  return withEvidences(sanitized as { id?: number } | null);
+};
+
 const handleReview = async (
   controller: any,
   ctx,
@@ -136,7 +183,11 @@ export default factories.createCoreController('api::task-execution.task-executio
       const executions = await strapi
         .service('api::task-execution.task-execution')
         .listExecutionsForAssignment(assignmentId);
-      const sanitizedExecutions = await this.sanitizeOutput(executions, ctx);
+      const sanitizedExecutions = await attachSanitizedEvidences(
+        ctx,
+        await this.sanitizeOutput(executions, ctx),
+        executions as RawExecution[]
+      );
 
       return this.transformResponse(sanitizedExecutions);
     } catch (error) {
@@ -206,7 +257,11 @@ export default factories.createCoreController('api::task-execution.task-executio
           },
         },
       });
-      const sanitizedExecution = await this.sanitizeOutput(execution, ctx);
+      const sanitizedExecution = await attachSanitizedEvidences(
+        ctx,
+        await this.sanitizeOutput(execution, ctx),
+        execution as RawExecution | null
+      );
 
       return this.transformResponse(sanitizedExecution);
     } catch (error) {

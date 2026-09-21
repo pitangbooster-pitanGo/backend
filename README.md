@@ -6,6 +6,11 @@ O projeto foi pensado a partir de um contexto comum em equipes que recebem novos
 
 O projeto usa **Strapi** por ser uma ferramenta presente no contexto da equipe de trabalho e por permitir explorar, na prática, content types, permissões, autenticação, policies, controllers, services, rotas customizadas e integração com banco de dados.
 
+## Documentação
+
+- [`docs/testing.md`](docs/testing.md) — tipos de teste, como rodar, dados de teste, cenários, cobertura (meta × medido) e lacunas.
+- [`docs/ai-mcp.md`](docs/ai-mcp.md) — arquitetura de IA/MCP, fluxo, validação humana, variáveis de ambiente, erros e limitações.
+
 ## Objetivo do Projeto
 
 A aplicação simula uma plataforma de onboarding e acompanhamento de trilhas de desenvolvimento para colaboradores alocados em projetos.
@@ -207,6 +212,16 @@ POST /task-executions/:id/complete
 ```
 
 Essas rotas permitem que o colaborador veja suas próprias trilhas e avance nas tarefas disponíveis.
+
+Sugestões de trilha por IA (perfis admin, RH e liderança) — a IA só propõe; a trilha só é criada na aprovação humana:
+
+```txt
+POST /ai-suggestions                 # gera um rascunho (pending_review)
+GET  /ai-suggestions                 # lista
+GET  /ai-suggestions/:id             # detalhe
+POST /ai-suggestions/:id/approve     # aprova (opcionalmente editada) e cria a trilha
+POST /ai-suggestions/:id/reject      # rejeita (motivo obrigatório)
+```
 
 ## Scripts de Validação
 

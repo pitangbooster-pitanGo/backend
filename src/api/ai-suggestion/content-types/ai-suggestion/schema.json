@@ -1,0 +1,67 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ai_suggestions",
+  "info": {
+    "singularName": "ai-suggestion",
+    "pluralName": "ai-suggestions",
+    "displayName": "AI Suggestion"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "goal": {
+      "type": "text",
+      "required": true
+    },
+    "track_type": {
+      "type": "enumeration",
+      "enum": ["institutional", "project"],
+      "default": "project"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending_review", "approved", "edited", "rejected"],
+      "required": true,
+      "default": "pending_review"
+    },
+    "original_result": {
+      "type": "json",
+      "required": true
+    },
+    "final_result": {
+      "type": "json"
+    },
+    "warnings": {
+      "type": "json"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "created_by_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "reviewed_by_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "reviewed_at": {
+      "type": "datetime"
+    },
+    "review_notes": {
+      "type": "text"
+    },
+    "track": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::track.track"
+    }
+  }
+}

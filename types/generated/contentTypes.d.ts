@@ -430,6 +430,58 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiAiSuggestionAiSuggestion
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'ai_suggestions';
+  info: {
+    displayName: 'AI Suggestion';
+    pluralName: 'ai-suggestions';
+    singularName: 'ai-suggestion';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    created_by_user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    final_result: Schema.Attribute.JSON;
+    goal: Schema.Attribute.Text & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::ai-suggestion.ai-suggestion'
+    > &
+      Schema.Attribute.Private;
+    model: Schema.Attribute.String;
+    original_result: Schema.Attribute.JSON & Schema.Attribute.Required;
+    provider: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    review_notes: Schema.Attribute.Text;
+    reviewed_at: Schema.Attribute.DateTime;
+    reviewed_by_user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    status: Schema.Attribute.Enumeration<
+      ['pending_review', 'approved', 'edited', 'rejected']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'pending_review'>;
+    track: Schema.Attribute.Relation<'manyToOne', 'api::track.track'>;
+    track_type: Schema.Attribute.Enumeration<['institutional', 'project']> &
+      Schema.Attribute.DefaultTo<'project'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    warnings: Schema.Attribute.JSON;
+  };
+}
+
 export interface ApiAuditLogAuditLog extends Struct.CollectionTypeSchema {
   collectionName: 'audit_logs';
   info: {
@@ -1317,6 +1369,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::ai-suggestion.ai-suggestion': ApiAiSuggestionAiSuggestion;
       'api::audit-log.audit-log': ApiAuditLogAuditLog;
       'api::project.project': ApiProjectProject;
       'api::task-evidence.task-evidence': ApiTaskEvidenceTaskEvidence;

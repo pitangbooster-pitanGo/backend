@@ -19,12 +19,19 @@
     "validate:evidences": "node scripts/validate-evidences.mjs",
     "validate:encontro7": "node scripts/validate-encontro-7.mjs",
     "validate:encontro6": "node scripts/validate-encontro-6.mjs",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "develop:test": "dotenv -e .env.test -- strapi develop",
     "start": "strapi start",
     "strapi": "strapi",
     "upgrade": "npx @strapi/upgrade latest",
     "upgrade:dry": "npx @strapi/upgrade latest --dry"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.127.0",
     "@strapi/plugin-cloud": "5.40.0",
     "@strapi/plugin-users-permissions": "5.40.0",
     "@strapi/strapi": "5.40.0",
@@ -38,7 +45,13 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "typescript": "^5"
+    "@types/supertest": "^7.2.1",
+    "@vitest/coverage-v8": "^4.1.11",
+    "dotenv": "^17.4.2",
+    "dotenv-cli": "^11.0.0",
+    "supertest": "^7.2.2",
+    "typescript": "^5",
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=20.0.0 <=24.x.x",

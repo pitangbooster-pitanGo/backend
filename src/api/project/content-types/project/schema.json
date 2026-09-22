@@ -26,6 +26,12 @@
       "relation": "manyToMany",
       "target": "api::track.track",
       "inversedBy": "projects"
+    },
+    "managers": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "managed_projects"
     }
   }
 }

@@ -4,6 +4,7 @@ import { findEntity, isPlainObject } from '../../../utils/relation-reference';
 import { logControllerError, rethrowStrapiError } from '../../../utils/controller-error';
 import { logEvent } from '../../../utils/logger';
 import { recordAuditLog } from '../../../utils/audit-log';
+import { getScopeForUser, mergeScopeIntoQuery } from '../../../utils/manager-scope';
 
 type RequestBody = {
   data?: Record<string, unknown>;
@@ -14,7 +15,45 @@ type TrackAssignmentAuditSnapshot = {
   documentId?: string | null;
 };
 
-export default factories.createCoreController('api::track-assignment.track-assignment', () => ({
+const UID = 'api::track-assignment.track-assignment';
+
+export default factories.createCoreController(UID, () => ({
+  // find/findOne sobrescritos só para aplicar o escopo por perfil (ver
+  // manager-scope.ts) — admin/hr veem tudo, leadership/employee só as
+  // atribuições de trilhas dentro do próprio escopo.
+  async find(ctx) {
+    const authUser = ctx.state.user;
+    if (!authUser) {
+      return ctx.unauthorized('Autenticação obrigatória', { code: 'AUTH_REQUIRED' });
+    }
+
+    await this.validateQuery(ctx);
+    const sanitizedQuery = await this.sanitizeQuery(ctx);
+    const scope = await getScopeForUser(authUser.id);
+    const query = mergeScopeIntoQuery(sanitizedQuery, scope, 'track-assignment');
+
+    const { results, pagination } = await strapi.service(UID).find(query);
+    const sanitizedResults = await this.sanitizeOutput(results, ctx);
+    return this.transformResponse(sanitizedResults, { pagination });
+  },
+
+  async findOne(ctx) {
+    const authUser = ctx.state.user;
+    if (!authUser) {
+      return ctx.unauthorized('Autenticação obrigatória', { code: 'AUTH_REQUIRED' });
+    }
+
+    const { id } = ctx.params;
+    await this.validateQuery(ctx);
+    const sanitizedQuery = await this.sanitizeQuery(ctx);
+    const scope = await getScopeForUser(authUser.id);
+    const query = mergeScopeIntoQuery(sanitizedQuery, scope, 'track-assignment');
+
+    const entity = await strapi.service(UID).findOne(id, query);
+    const sanitizedEntity = await this.sanitizeOutput(entity, ctx);
+    return this.transformResponse(sanitizedEntity);
+  },
+
   async create(ctx) {
     try {
       const authUser = ctx.state.user;

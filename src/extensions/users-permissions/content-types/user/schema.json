@@ -77,6 +77,12 @@
       "relation": "oneToMany",
       "target": "api::track.track",
       "mappedBy": "created_by_user"
+    },
+    "managed_projects": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::project.project",
+      "mappedBy": "managers"
     }
   }
 }

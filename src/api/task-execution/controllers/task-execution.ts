@@ -4,9 +4,12 @@ import type { UID } from '@strapi/types';
 
 import { logControllerError, rethrowStrapiError } from '../../../utils/controller-error';
 import { logEvent } from '../../../utils/logger';
+import { assertUserCanActOnTrack, getScopeForUser, mergeScopeIntoQuery } from '../../../utils/manager-scope';
+import { findEntity } from '../../../utils/relation-reference';
 
 const { ValidationError } = errors;
 const taskEvidenceUid = 'api::task-evidence.task-evidence' as UID.ContentType;
+const taskExecutionUid = 'api::task-execution.task-execution' as UID.ContentType;
 
 const parseId = (value: string) => {
   const parsedId = Number(value);
@@ -105,6 +108,26 @@ const handleReview = async (
   await controller.sanitizeQuery(ctx);
 
   try {
+    // Um gerente (leadership) só pode aprovar/rejeitar execuções de trilhas
+    // dos projetos sob sua gestão (ou institucionais); admin/hr não têm essa
+    // restrição. Se a execução não existir, deixa o service adiante lançar o
+    // TASK_EXECUTION_NOT_FOUND de sempre em vez de mascarar com 403.
+    const existingExecution = await findEntity<{ track_assignment?: { id: number } | null }>(
+      'api::task-execution.task-execution',
+      reference,
+      ['track_assignment']
+    );
+    if (existingExecution?.track_assignment?.id) {
+      const assignment = await findEntity<{ track?: { id: number } | null }>(
+        'api::track-assignment.track-assignment',
+        existingExecution.track_assignment.id,
+        ['track']
+      );
+      if (assignment?.track?.id) {
+        await assertUserCanActOnTrack(authUser.id, assignment.track.id);
+      }
+    }
+
     const bodyData = parseBodyData(ctx.request.body?.data ?? ctx.request.body);
     const execution = await strapi
       .service('api::task-execution.task-execution')
@@ -138,7 +161,43 @@ const handleReview = async (
   }
 };
 
-export default factories.createCoreController('api::task-execution.task-execution', () => ({
+export default factories.createCoreController(taskExecutionUid, () => ({
+  // find/findOne sobrescritos só para aplicar o escopo por perfil (ver
+  // manager-scope.ts) — a fila de "Pendentes de aprovação" usa esta listagem;
+  // um gerente só deve ver execuções de trilhas dos seus projetos.
+  async find(ctx) {
+    const authUser = ctx.state.user;
+    if (!authUser) {
+      return ctx.unauthorized('Autenticação obrigatória', { code: 'AUTH_REQUIRED' });
+    }
+
+    await this.validateQuery(ctx);
+    const sanitizedQuery = await this.sanitizeQuery(ctx);
+    const scope = await getScopeForUser(authUser.id);
+    const query = mergeScopeIntoQuery(sanitizedQuery, scope, 'task-execution');
+
+    const { results, pagination } = await strapi.service(taskExecutionUid).find(query);
+    const sanitizedResults = await this.sanitizeOutput(results, ctx);
+    return this.transformResponse(sanitizedResults, { pagination });
+  },
+
+  async findOne(ctx) {
+    const authUser = ctx.state.user;
+    if (!authUser) {
+      return ctx.unauthorized('Autenticação obrigatória', { code: 'AUTH_REQUIRED' });
+    }
+
+    const { id } = ctx.params;
+    await this.validateQuery(ctx);
+    const sanitizedQuery = await this.sanitizeQuery(ctx);
+    const scope = await getScopeForUser(authUser.id);
+    const query = mergeScopeIntoQuery(sanitizedQuery, scope, 'task-execution');
+
+    const entity = await strapi.service(taskExecutionUid).findOne(id, query);
+    const sanitizedEntity = await this.sanitizeOutput(entity, ctx);
+    return this.transformResponse(sanitizedEntity);
+  },
+
   async listForMyAssignment(ctx) {
     try {
       const authUser = ctx.state.user;

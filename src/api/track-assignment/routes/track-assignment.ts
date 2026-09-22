@@ -14,6 +14,9 @@ const managementPolicies = [
   },
 ];
 
+// find/findOne/update/delete são filtrados pelo escopo no controller
+// (404 fora dele — ver manager-scope.ts); create tem checagem própria no
+// service, feita sobre a trilha do payload.
 export default factories.createCoreRouter('api::track-assignment.track-assignment', {
   config: {
     find: {

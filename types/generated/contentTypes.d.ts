@@ -551,6 +551,10 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
       'api::project.project'
     > &
       Schema.Attribute.Private;
+    managers: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
     tracks: Schema.Attribute.Relation<'manyToMany', 'api::track.track'>;
@@ -1332,6 +1336,10 @@ export interface PluginUsersPermissionsUser
       'plugin::users-permissions.user'
     > &
       Schema.Attribute.Private;
+    managed_projects: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::project.project'
+    >;
     name: Schema.Attribute.String;
     password: Schema.Attribute.Password &
       Schema.Attribute.Private &

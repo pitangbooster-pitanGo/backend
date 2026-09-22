@@ -14,6 +14,8 @@ const managementPolicies = [
   },
 ];
 
+// A fila de "Pendentes de aprovação" lê esta lista — o controller (find/
+// findOne sobrescritos) filtra por escopo antes de responder.
 export default factories.createCoreRouter('api::task-execution.task-execution', {
   config: {
     find: {

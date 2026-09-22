@@ -16,6 +16,9 @@ const managementPolicies = [
 
 export default factories.createCoreRouter('api::track.track', {
   config: {
+    // is-active-user (não has-role): colaborador também pode listar
+    // trilhas. O recorte por perfil é feito no controller (find/findOne
+    // sobrescritos) — ver manager-scope.ts.
     find: {
       policies: [activeUserPolicy],
     },

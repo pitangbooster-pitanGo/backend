@@ -3,6 +3,7 @@ import { factories } from '@strapi/strapi';
 import { logControllerError, rethrowStrapiError } from '../../../utils/controller-error';
 import { findEntity } from '../../../utils/relation-reference';
 import { recordAuditLog } from '../../../utils/audit-log';
+import { getScopeForRole, getScopeForUser, mergeScopeIntoQuery } from '../../../utils/manager-scope';
 import {
   createNextTrackSnapshot,
   ensureCurrentTrackSnapshot,
@@ -23,7 +24,46 @@ const responseReference = (response: unknown) => {
   return data?.documentId ?? data?.id ?? null;
 };
 
-export default factories.createCoreController('api::track.track', () => ({
+const UID = 'api::track.track';
+
+export default factories.createCoreController(UID, () => ({
+  // find/findOne sobrescritos só para aplicar o escopo por perfil (ver
+  // manager-scope.ts): admin/hr veem tudo; leadership só trilhas
+  // institucionais ou dos projetos onde é manager; employee só as trilhas
+  // às quais tem atribuição.
+  async find(ctx) {
+    const authUser = ctx.state.user;
+    if (!authUser) {
+      return ctx.unauthorized('Autenticação obrigatória', { code: 'AUTH_REQUIRED' });
+    }
+
+    await this.validateQuery(ctx);
+    const sanitizedQuery = await this.sanitizeQuery(ctx);
+    const scope = await getScopeForUser(authUser.id);
+    const query = mergeScopeIntoQuery(sanitizedQuery, scope, 'track');
+
+    const { results, pagination } = await strapi.service(UID).find(query);
+    const sanitizedResults = await this.sanitizeOutput(results, ctx);
+    return this.transformResponse(sanitizedResults, { pagination });
+  },
+
+  async findOne(ctx) {
+    const authUser = ctx.state.user;
+    if (!authUser) {
+      return ctx.unauthorized('Autenticação obrigatória', { code: 'AUTH_REQUIRED' });
+    }
+
+    const { id } = ctx.params;
+    await this.validateQuery(ctx);
+    const sanitizedQuery = await this.sanitizeQuery(ctx);
+    const scope = await getScopeForUser(authUser.id);
+    const query = mergeScopeIntoQuery(sanitizedQuery, scope, 'track');
+
+    const entity = await strapi.service(UID).findOne(id, query);
+    const sanitizedEntity = await this.sanitizeOutput(entity, ctx);
+    return this.transformResponse(sanitizedEntity);
+  },
+
   async create(ctx) {
     try {
       const authUser = ctx.state.user;
@@ -205,6 +245,29 @@ export default factories.createCoreController('api::track.track', () => ({
 
   async details(ctx) {
     try {
+      const authUser = ctx.state.user;
+      if (!authUser) {
+        return ctx.unauthorized('Autenticação obrigatória', { code: 'AUTH_REQUIRED' });
+      }
+
+      // Ação customizada: não passa pelo `find`/`findOne` padrão do Strapi,
+      // então a policy global::scope-by-manager (que mescla filtro em
+      // ctx.query) não se aplica aqui — a checagem precisa ser explícita.
+      const trackEntity = await findEntity<{ id: number }>('api::track.track', ctx.params.id);
+      if (!trackEntity) {
+        return ctx.notFound('Trilha nao encontrada', { code: 'TRACK_NOT_FOUND' });
+      }
+
+      const requester = await strapi.db.query('plugin::users-permissions.user').findOne({
+        where: { id: authUser.id },
+        populate: ['role'],
+      });
+      const scope = await getScopeForRole(authUser.id, requester?.role?.type as string | undefined);
+      if (!scope.unrestricted && !scope.trackIds.includes(trackEntity.id)) {
+        // 404, não 403: não confirma pra quem não tem acesso que a trilha existe.
+        return ctx.notFound('Trilha nao encontrada', { code: 'TRACK_NOT_FOUND' });
+      }
+
       const rawVersion = ctx.query.version;
       const version =
         rawVersion === undefined

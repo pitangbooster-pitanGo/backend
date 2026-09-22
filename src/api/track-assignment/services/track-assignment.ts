@@ -2,6 +2,7 @@ import { factories } from '@strapi/strapi';
 import { errors } from '@strapi/utils';
 
 import { findEntity, type RelationReference } from '../../../utils/relation-reference';
+import { assertUserCanActOnTrack } from '../../../utils/manager-scope';
 import {
   ensureCurrentTrackSnapshot,
   type TrackSnapshot,
@@ -39,6 +40,10 @@ export default factories.createCoreService('api::track-assignment.track-assignme
         track: data.track,
       });
     }
+
+    // Um gerente (leadership) só pode atribuir trilhas dos projetos sob sua
+    // gestão (ou institucionais); admin/hr não têm essa restrição.
+    await assertUserCanActOnTrack(assignedByUserId, track.id);
 
     const assignedUser = await findEntity<UserEntity>(
       'plugin::users-permissions.user',

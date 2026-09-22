@@ -43,7 +43,11 @@ export default defineConfig({
           environment: 'node',
           include: ['tests/integration/**/*.test.ts'],
           setupFiles: ['tests/setup/vitest.setup.ts'],
-          testTimeout: 30_000,
+          // Cada teste faz requisições HTTP reais que disparam várias idas e
+          // voltas ao Postgres remoto (Supabase); em momentos de latência mais
+          // alta da conexão, os 30s padrão ficam justos para fluxos com várias
+          // chamadas em sequência (ex.: enviar → rejeitar → reenviar → aprovar).
+          testTimeout: 60_000,
           // O primeiro boot cria TODAS as tabelas na schema pitang_test do zero
           // (pode passar de 1 min numa conexão remota); boots seguintes reusam a
           // schema e são bem mais rápidos.

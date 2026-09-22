@@ -127,6 +127,29 @@ export async function assignTrackToUser(trackId: number, userId: number, assigne
   });
 }
 
+export async function createProject(overrides: {
+  name?: string;
+  description?: string;
+  is_active?: boolean;
+  managers?: number[];
+  tracks?: number[];
+} = {}) {
+  const strapi = await getTestStrapi();
+  const suffix = uniqueSuffix();
+
+  const project = await strapi.db.query('api::project.project').create({
+    data: {
+      name: overrides.name ?? `Projeto de teste ${suffix}`,
+      description: overrides.description ?? 'Projeto criado por fixture de teste',
+      is_active: overrides.is_active ?? true,
+      managers: overrides.managers ?? [],
+      tracks: overrides.tracks ?? [],
+    },
+  });
+
+  return project as { id: number; documentId: string; name: string };
+}
+
 export async function getExecutionsForAssignment(trackAssignmentId: number) {
   const strapi = await getTestStrapi();
   return strapi.db.query('api::task-execution.task-execution').findMany({

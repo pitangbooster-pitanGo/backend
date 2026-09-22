@@ -17,13 +17,21 @@ export const DEMO_CREDENTIALS = {
 export type DemoRole = keyof typeof DEMO_CREDENTIALS;
 
 export async function loginAs(role: DemoRole): Promise<{ token: string; userId: number }> {
-  const client = await api();
   const { identifier, password } = DEMO_CREDENTIALS[role];
+  return loginWithCredentials(identifier, password);
+}
+
+/** Login genérico — para usuários criados dinamicamente via `createTestUser`, não só os 4 fixos. */
+export async function loginWithCredentials(
+  identifier: string,
+  password: string,
+): Promise<{ token: string; userId: number }> {
+  const client = await api();
   const res = await client.post('/api/auth/local').send({ identifier, password });
 
   if (res.status !== 200) {
     throw new Error(
-      `Falha ao logar como "${role}" (${identifier}): ${res.status} ${JSON.stringify(res.body)}`,
+      `Falha ao logar como "${identifier}": ${res.status} ${JSON.stringify(res.body)}`,
     );
   }
 

@@ -140,7 +140,12 @@ describe('Acesso à API de sugestões', () => {
     expect(created.status).toBe(201);
 
     const client = await api();
-    const list = await client.get('/api/ai-suggestions').set(authHeader(token));
+    // O schema de teste acumula sugestões de execuções anteriores; sem filtrar
+    // pelo objetivo (único por `uniqueSuffix()`), a paginação padrão pode não
+    // trazer a recém-criada na primeira página.
+    const list = await client
+      .get(`/api/ai-suggestions?filters[goal][$eq]=${encodeURIComponent(goal)}`)
+      .set(authHeader(token));
     expect(list.status).toBe(200);
     expect(list.body.data.some((item: { goal: string }) => item.goal === goal)).toBe(true);
 

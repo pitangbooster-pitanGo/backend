@@ -111,9 +111,9 @@ Falhas da IA/MCP viram `AiFlowError` e respondem com `{ data: null, error: { sta
 | Código | HTTP | Quando |
 |---|---|---|
 | `AI_GOAL_INVALID` | 400 | Objetivo vazio, curto (<10) ou longo (>2000) |
-| `AI_NOT_CONFIGURED` | 503 | `AI_PROVIDER=anthropic` sem `ANTHROPIC_API_KEY`, ou provedor desconhecido |
+| `AI_NOT_CONFIGURED` | 503 | `AI_PROVIDER=anthropic` sem `ANTHROPIC_API_KEY`, `AI_PROVIDER=gemini` sem `GEMINI_API_KEY`, ou provedor desconhecido |
 | `AI_PROVIDER_TIMEOUT` | 504 | Provedor passou de `AI_TIMEOUT_MS` (o `AbortSignal` é acionado; vale mesmo se o provedor ignorá-lo) |
-| `AI_PROVIDER_ERROR` | 502 | Erro HTTP/rede do provedor, recusa do modelo (`stop_reason: refusal`) ou exceção inesperada. Só o status HTTP de origem é exposto |
+| `AI_PROVIDER_ERROR` | 502 | Erro HTTP/rede do provedor, recusa do modelo (Anthropic `stop_reason: refusal`; Gemini `promptFeedback.blockReason` ou `finishReason` de bloqueio) ou exceção inesperada. Só o status HTTP de origem é exposto |
 | `AI_EMPTY_RESPONSE` | 502 | Resposta vazia |
 | `AI_RESULT_INVALID` | 502 | Não é JSON / não segue o formato / dependência inválida (`details.issues` lista até 20 problemas) |
 | `MCP_TOOL_UNAVAILABLE` · `MCP_TIMEOUT` · `MCP_INVALID_RESPONSE` | — | **Não interrompem a geração**: viram o aviso `MCP_CONTEXT_UNAVAILABLE` na sugestão |
@@ -155,15 +155,21 @@ Nunca versionar valores reais. `.env.example` lista os nomes com valores seguros
 
 | Variável | Padrão | Descrição |
 |---|---|---|
-| `AI_PROVIDER` | `mock` | `mock` ou `anthropic` |
+| `AI_PROVIDER` | `mock` | `mock`, `anthropic` ou `gemini` |
 | `ANTHROPIC_API_KEY` | vazio | Só é usada com `AI_PROVIDER=anthropic`. **Somente no servidor.** |
-| `AI_MODEL` | `claude-opus-5` | Modelo usado pelo provedor Anthropic |
+| `GEMINI_API_KEY` | vazio | Só é usada com `AI_PROVIDER=gemini`. **Somente no servidor.** |
+| `AI_MODEL` | acompanha o provedor | Modelo do provedor escolhido. Padrão `claude-opus-5` com `anthropic` e `gemini-3.8-flash` com `gemini` |
 | `AI_TIMEOUT_MS` | `60000` | Timeout da chamada de IA |
 | `MCP_TRANSPORT` | `local` | `local` ou `http` |
 | `MCP_SERVER_URL` | vazio | URL do servidor MCP (só com `http`) |
 | `MCP_TIMEOUT_MS` | `5000` | Timeout da chamada MCP |
 
-**Ativar a IA real:** `AI_PROVIDER=anthropic` + `ANTHROPIC_API_KEY=<chave>` no ambiente do backend (Render/host), sem tocar no frontend. O provedor usa `client.messages.create` com `max_tokens: 16000` e `output_config.effort: "medium"`.
+**Ativar a IA real:** no ambiente do backend (Render/host), sem tocar no frontend:
+
+- **Anthropic** — `AI_PROVIDER=anthropic` + `ANTHROPIC_API_KEY=<chave>`. Usa `client.messages.create` do SDK oficial com `max_tokens: 16000` e `output_config.effort: "medium"`.
+- **Gemini** — `AI_PROVIDER=gemini` + `GEMINI_API_KEY=<chave>`. Chama `POST v1beta/models/<AI_MODEL>:generateContent` da Generative Language API via `fetch`, com a chave no cabeçalho `x-goog-api-key` (nunca na query string, que vaza em log de proxy) e `generationConfig.responseMimeType: "application/json"`. Não define `maxOutputTokens`: um corte no meio devolveria JSON truncado, que viraria `AI_RESULT_INVALID` em vez de uma falha clara — o tamanho já é limitado por `maxTasks` no prompt.
+
+Os dois provedores compartilham os mesmos prompts (`buildSystemPrompt` / `buildUserPrompt`) e devolvem texto bruto, então o AIResultValidator continua sendo a única fronteira de confiança e trocar de provedor não muda nenhum contrato interno.
 
 ## 9. Testes
 

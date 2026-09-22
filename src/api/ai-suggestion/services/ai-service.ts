@@ -1,5 +1,6 @@
 import { AiFlowError, runWithTimeout } from './ai-errors';
 import { createAnthropicProvider } from './anthropic-provider';
+import { createGeminiProvider } from './gemini-provider';
 import { mockProvider } from './mock-provider';
 import type { AiConfig, AiProvider, ProviderRequest } from './ai-types';
 
@@ -10,10 +11,12 @@ export const getProvider = (config: AiConfig): AiProvider => {
       return mockProvider;
     case 'anthropic':
       return createAnthropicProvider(config);
+    case 'gemini':
+      return createGeminiProvider(config);
     default:
       throw new AiFlowError(
         'AI_NOT_CONFIGURED',
-        `Provedor de IA desconhecido: "${config.provider}" (use "mock" ou "anthropic")`
+        `Provedor de IA desconhecido: "${config.provider}" (use "mock", "anthropic" ou "gemini")`
       );
   }
 };

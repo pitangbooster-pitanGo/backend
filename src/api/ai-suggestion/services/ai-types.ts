@@ -32,7 +32,10 @@ export type SuggestionWarning = { code: string; message: string };
 export type AiConfig = {
   provider: string;
   model: string;
+  /** Chave do provedor Anthropic (ANTHROPIC_API_KEY). */
   apiKey: string;
+  /** Chave do provedor Gemini (GEMINI_API_KEY). Só AI_PROVIDER=gemini a exige. */
+  geminiApiKey?: string;
   timeoutMs: number;
   mcp: { transport: string; serverUrl: string; timeoutMs: number };
 };
